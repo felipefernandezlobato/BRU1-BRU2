@@ -8,6 +8,23 @@
 
 **Tech Stack:** Next.js 16 + React 19 + TypeScript + Tailwind CSS 4 | FastAPI + SQLAlchemy 2.0 + Alembic + Pydantic v2 | Neon PostgreSQL / SQLite | Chart.js | pytest + httpx
 
+## Progress
+
+| Task | Status | Tests |
+|---|---|---|
+| 1. Backend scaffold + models + auth | ✅ DONE | 19 passing |
+| 2-3. Users + Categories API | ✅ DONE | 19 passing (12 users + 7 categories) |
+| 4. Items API + cost management | ✅ DONE | 10 passing |
+| 5. Movements API | ✅ DONE | 12 passing |
+| 6. Photos + Analytics + Settings + Sync | ✅ DONE | 9 passing (5 analytics + 4 settings) |
+| 7. Frontend scaffold + shared components | ✅ DONE | build clean |
+| 8. Login + Home + New Movement form | ✅ DONE | build clean (12 routes) |
+| 9. Movement list + detail pages | ✅ DONE | build clean |
+| 10. Admin pages + analytics charts | ✅ DONE | build clean, analytics data fix applied |
+| 11. Polish + deploy | ✅ DONE | 69 backend tests, 12 frontend routes, browser tested |
+
+**Total: 69 backend tests passing, 12 frontend routes compiling, full E2E browser test completed.**
+
 ## Global Constraints
 
 - All UI text in **Spanish** — every label, message, placeholder, button

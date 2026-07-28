@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.db
+*.db-shm
+*.db-wal
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Uploads
+backend/data/photos/
+
+# Playwright test artifacts
+.playwright-mcp/
