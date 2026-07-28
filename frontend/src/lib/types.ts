@@ -68,3 +68,16 @@ export interface Setting {
   key: string;
   value: string;
 }
+
+export interface PersonnelCost {
+  id: number;
+  year: number;
+  month: number;
+  total_paid: number;
+  bru1_e2n: number;
+  bru2_e2n: number;
+  ratio: number;
+  bru2_cost: number;
+  notes?: string;
+  created_at: string;
+}

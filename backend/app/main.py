@@ -14,6 +14,7 @@ from app.routers import movements as movements_router
 from app.routers import analytics as analytics_router
 from app.routers import settings as settings_router
 from app.routers import sync as sync_router
+from app.routers import personnel as personnel_router
 from app.seed import seed_data
 
 load_dotenv()
@@ -39,6 +40,7 @@ app.include_router(movements_router.router)
 app.include_router(analytics_router.router)
 app.include_router(settings_router.router)
 app.include_router(sync_router.router)
+app.include_router(personnel_router.router)
 
 
 @app.on_event("startup")

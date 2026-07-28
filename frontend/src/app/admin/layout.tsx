@@ -10,6 +10,7 @@ const tabs = [
   { label: "Articulos", href: "/admin/items" },
   { label: "Categorias", href: "/admin/categories" },
   { label: "Equipo", href: "/admin/team" },
+  { label: "Personal", href: "/admin/personnel" },
   { label: "Ajustes", href: "/admin/settings" },
 ];
 

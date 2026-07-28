@@ -187,3 +187,29 @@ class AnalyticsSummary(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     user: UserOut
+
+
+# --- Personnel Cost ---
+
+class PersonnelCostCreate(BaseModel):
+    year: int
+    month: int
+    total_paid: float
+    bru1_e2n: float
+    bru2_e2n: float
+    notes: Optional[str] = None
+
+
+class PersonnelCostOut(BaseModel):
+    id: int
+    year: int
+    month: int
+    total_paid: float
+    bru1_e2n: float
+    bru2_e2n: float
+    ratio: float
+    bru2_cost: float
+    notes: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

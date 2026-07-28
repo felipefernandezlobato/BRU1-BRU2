@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { formatCHF } from "@/lib/format";
-import { AnalyticsSummary } from "@/lib/types";
+import { AnalyticsSummary, PersonnelCost } from "@/lib/types";
 
 function ChangeBadge({ pct, invertColor }: { pct: number; invertColor?: boolean }) {
   const isNeg = pct < 0;
@@ -35,6 +35,8 @@ function ChangeBadge({ pct, invertColor }: { pct: number; invertColor?: boolean 
 export default function AdminDashboardPage() {
   const toast = useToast();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [personnelCost, setPersonnelCost] = useState<PersonnelCost | null>(null);
+  const [personnelLoaded, setPersonnelLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -45,6 +47,17 @@ export default function AdminDashboardPage() {
       toast("Error al cargar datos", "error");
     } finally {
       setLoading(false);
+    }
+
+    // Fetch current month personnel cost (separate, non-blocking)
+    try {
+      const now = new Date();
+      const pc = await apiFetch<PersonnelCost>(`/api/personnel/${now.getFullYear()}/${now.getMonth() + 1}`);
+      setPersonnelCost(pc);
+    } catch {
+      // 404 or error — no record for this month
+    } finally {
+      setPersonnelLoaded(true);
     }
   }, [toast]);
 
@@ -106,6 +119,29 @@ export default function AdminDashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Personnel BRU2 card */}
+      {personnelLoaded && (
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
+          <p className="text-xs text-[#9CA3AF] font-medium uppercase tracking-wide">
+            Personal BRU2 este mes
+          </p>
+          {personnelCost ? (
+            <>
+              <p className="text-xl font-bold text-[#861A22] mt-1">
+                {formatCHF(personnelCost.bru2_cost)}
+              </p>
+              <p className="text-xs text-[#9CA3AF] mt-2">
+                Ratio: {(personnelCost.ratio * 100).toFixed(1)}% &middot; Total pagado: {formatCHF(personnelCost.total_paid)}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-[#9CA3AF] mt-1">
+              Sin registro de personal este mes
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Top items by cost */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">

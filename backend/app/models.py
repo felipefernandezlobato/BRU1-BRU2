@@ -105,3 +105,21 @@ class CostHistory(Base):
     change_source: Mapped[str] = mapped_column(sa.String(20))
 
     item: Mapped["Item"] = relationship(back_populates="cost_history")
+
+
+class PersonnelCost(Base):
+    __tablename__ = "personnel_costs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    year: Mapped[int] = mapped_column(sa.Integer)
+    month: Mapped[int] = mapped_column(sa.Integer)  # 1-12
+    total_paid: Mapped[float] = mapped_column(sa.Float)  # actual total payroll
+    bru1_e2n: Mapped[float] = mapped_column(sa.Float)  # BRU1 value from E2N
+    bru2_e2n: Mapped[float] = mapped_column(sa.Float)  # BRU2 value from E2N
+    # Calculated fields stored for convenience
+    ratio: Mapped[float] = mapped_column(sa.Float)  # bru2_e2n / (bru1_e2n + bru2_e2n)
+    bru2_cost: Mapped[float] = mapped_column(sa.Float)  # total_paid * ratio
+    notes: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    __table_args__ = (sa.UniqueConstraint("year", "month", name="uq_personnel_year_month"),)
