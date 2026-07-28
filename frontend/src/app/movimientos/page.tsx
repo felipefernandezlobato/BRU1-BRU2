@@ -120,8 +120,8 @@ function MovimientosContent() {
       params.set("offset", String(offset));
 
       const { from, to } = getDateRange(dateFilter);
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
+      if (from) params.set("start_date", from);
+      if (to) params.set("end_date", to);
       if (directionFilter !== "all") params.set("direction", directionFilter);
 
       return params.toString();
@@ -137,20 +137,20 @@ function MovimientosContent() {
 
         const offset = reset ? 0 : movements.length;
         const qs = buildQueryParams(offset);
-        const data = await apiFetch<{ movements: Movement[]; total: number }>(
+        const data = await apiFetch<Movement[]>(
           `/api/movements?${qs}`
         );
 
         if (reset) {
-          setMovements(data.movements);
+          setMovements(data);
         } else {
-          setMovements((prev) => [...prev, ...data.movements]);
+          setMovements((prev) => [...prev, ...data]);
         }
-        setTotalCount(data.total);
         const currentTotal = reset
-          ? data.movements.length
-          : movements.length + data.movements.length;
-        setHasMore(currentTotal < data.total);
+          ? data.length
+          : movements.length + data.length;
+        setTotalCount(currentTotal);
+        setHasMore(data.length >= PAGE_SIZE);
       } catch {
         toast("Error al cargar movimientos", "error");
       } finally {
@@ -158,7 +158,7 @@ function MovimientosContent() {
         setLoadingMore(false);
       }
     },
-    [buildQueryParams, movements.length, toast]
+    [buildQueryParams, movements, toast]
   );
 
   // Fetch on filter change

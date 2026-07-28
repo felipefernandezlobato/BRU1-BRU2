@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_admin
 from app.database import get_db
-from app.models import User, Movement, MovementLine, Item
+from app.models import User, Movement, MovementLine, Item, PersonnelCost, Setting
 from app.schemas import AnalyticsSummary
 from app.services.analytics import (
     get_month_range,
@@ -149,3 +149,41 @@ def get_direction_split(
         }
         for r in results
     ]
+
+
+@router.get("/monthly-combined")
+def get_monthly_combined(
+    months: int = 12,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    movement_data = monthly_totals(db, months)
+    rent_row = db.query(Setting).filter(Setting.key == "monthly_rent").first()
+    monthly_rent = float(rent_row.value) if rent_row else 0.0
+
+    # BRU2 opened 2026-02-16: no rent before Feb, half rent in Feb, full from March
+    OPEN_YEAR, OPEN_MONTH = 2026, 2
+
+    result = []
+    for m in movement_data:
+        pc = db.query(PersonnelCost).filter(
+            PersonnelCost.year == m["year"],
+            PersonnelCost.month == m["month"],
+        ).first()
+
+        y, mo = m["year"], m["month"]
+        if y < OPEN_YEAR or (y == OPEN_YEAR and mo < OPEN_MONTH):
+            rent = 0.0
+        elif y == OPEN_YEAR and mo == OPEN_MONTH:
+            rent = round(monthly_rent / 2, 2)
+        else:
+            rent = monthly_rent
+
+        result.append({
+            "year": y,
+            "month": mo,
+            "movement_cost": m["total_cost"],
+            "personnel_cost": round(pc.bru2_cost, 2) if pc else 0.0,
+            "rent": rent,
+        })
+    return result

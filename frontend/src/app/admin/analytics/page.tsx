@@ -13,6 +13,14 @@ interface MonthlyData {
   count: number;
 }
 
+interface MonthlyCombinedData {
+  year: number;
+  month: number;
+  movement_cost: number;
+  personnel_cost: number;
+  rent: number;
+}
+
 interface CategoryData {
   category: string;
   total: number;
@@ -47,6 +55,7 @@ export default function AnalyticsPage() {
   const toast = useToast();
   const [months, setMonths] = useState(3);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [combinedData, setCombinedData] = useState<MonthlyCombinedData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [directionData, setDirectionData] = useState<DirectionData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,12 +64,14 @@ export default function AnalyticsPage() {
     setLoading(true);
     try {
       const { start_date, end_date } = getDateRange(months);
-      const [monthly, categories, direction] = await Promise.all([
+      const [monthly, combined, categories, direction] = await Promise.all([
         apiFetch<MonthlyData[]>(`/api/analytics/monthly?months=${months}`),
+        apiFetch<MonthlyCombinedData[]>(`/api/analytics/monthly-combined?months=${months}`),
         apiFetch<CategoryData[]>(`/api/analytics/categories?start_date=${start_date}&end_date=${end_date}`),
         apiFetch<DirectionData[]>(`/api/analytics/direction?start_date=${start_date}&end_date=${end_date}`),
       ]);
       setMonthlyData(monthly);
+      setCombinedData(combined);
       setCategoryData(categories);
       setDirectionData(direction);
     } catch {
@@ -81,6 +92,18 @@ export default function AnalyticsPage() {
 
   const catLabels = categoryData.map((d) => d.category);
   const catValues = categoryData.map((d) => d.total);
+
+  const combinedLabels = combinedData.map((d) => MONTH_NAMES[d.month - 1] || `${d.month}`);
+  const combinedDatasets = [
+    { label: "Movimientos", data: combinedData.map((d) => d.movement_cost), color: "#861A22" },
+    { label: "Personal", data: combinedData.map((d) => d.personnel_cost), color: "#D4C3A5" },
+    { label: "Alquiler", data: combinedData.map((d) => d.rent), color: "#6B151D" },
+  ];
+  const totalMovements = combinedData.reduce((s, d) => s + d.movement_cost, 0);
+  const totalPersonnel = combinedData.reduce((s, d) => s + d.personnel_cost, 0);
+  const totalRent = combinedData.reduce((s, d) => s + d.rent, 0);
+  const grandTotal = totalMovements + totalPersonnel + totalRent;
+  const fmtCHF = (n: number) => n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const dirLabels = directionData.map((d) =>
     d.direction === "BRU1_TO_BRU2" ? "BRU1 → BRU2" : "BRU2 → BRU1"
@@ -119,6 +142,36 @@ export default function AnalyticsPage() {
               data={monthlyValues}
               title="Coste mensual"
             />
+          </div>
+
+          {/* Monthly total cost (movements + personnel + rent) */}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
+            <BarChart
+              labels={combinedLabels}
+              datasets={combinedDatasets}
+              title="Coste total mensual"
+              stacked
+            />
+            <div className="mt-4 pt-3 border-t border-[#E5E7EB]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold text-[#1A1A1A]">Total ({months} meses)</span>
+                <span className="text-sm font-bold text-[#1A1A1A]">CHF {fmtCHF(grandTotal)}</span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#861A22] inline-block" />Movimientos</span>
+                  <span>CHF {fmtCHF(totalMovements)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#D4C3A5] inline-block" />Personal</span>
+                  <span>CHF {fmtCHF(totalPersonnel)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#6B151D] inline-block" />Alquiler</span>
+                  <span>CHF {fmtCHF(totalRent)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Category breakdown doughnut */}

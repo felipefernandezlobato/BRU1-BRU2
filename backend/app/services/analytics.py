@@ -101,6 +101,7 @@ def monthly_totals(db: Session, months: int = 12) -> list[dict]:
             "total_cost": summary["total_cost"],
             "count": summary["count"],
         })
+    results.reverse()
     return results
 
 

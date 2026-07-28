@@ -282,6 +282,14 @@ export default function ItemsPage() {
     return true;
   });
 
+  const groupedByCategory = categories
+    .sort((a, b) => a.position - b.position)
+    .map((cat) => ({
+      ...cat,
+      items: filteredItems.filter((item) => item.category_id === cat.id),
+    }))
+    .filter((group) => group.items.length > 0);
+
   async function handleCreateItem(data: ItemFormData) {
     try {
       await apiFetch("/api/items", {
@@ -428,105 +436,114 @@ export default function ItemsPage() {
         </div>
       </div>
 
-      {/* Items list */}
-      <div className="space-y-2">
+      {/* Items list grouped by category */}
+      <div className="space-y-6">
         {filteredItems.length === 0 ? (
           <p className="text-center text-[#9CA3AF] py-10 text-sm">
             No se encontraron articulos
           </p>
         ) : (
-          filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className={`bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB] ${!item.is_active ? "opacity-60" : ""}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-bold text-[#1A1A1A]">{item.name}</span>
-                    {item.category_name && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F3F4F6] text-[#6B7280]">
-                        {item.category_name}
-                      </span>
-                    )}
-                    {item.is_produced && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">
-                        Producido
-                      </span>
-                    )}
-                    {!item.is_active && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-600">
-                        Inactivo
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#9CA3AF] mt-1">Unidad: {item.unit}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {editingCostId === item.id ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editCostValue}
-                        onChange={(e) => setEditCostValue(e.target.value)}
-                        className="w-20 border border-[#E5E7EB] rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#861A22]"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveCost(item.id);
-                          if (e.key === "Escape") setEditingCostId(null);
-                        }}
-                      />
-                      <button
-                        onClick={() => handleSaveCost(item.id)}
-                        className="text-green-600 hover:text-green-700 p-1"
-                        aria-label="Guardar coste"
-                      >
-                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setEditingCostId(null)}
-                        className="text-[#9CA3AF] hover:text-[#6B7280] p-1"
-                        aria-label="Cancelar"
-                      >
-                        <CloseIcon />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setEditingCostId(item.id);
-                        setEditCostValue(item.cost_per_unit.toString());
-                      }}
-                      className="flex items-center gap-1 text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors"
-                      title="Editar coste"
-                    >
-                      <span className="font-semibold">{formatCHF(item.cost_per_unit)}</span>
-                      <PencilIcon />
-                    </button>
-                  )}
-                </div>
+          groupedByCategory.map((group) => (
+            <section key={group.id}>
+              <div className="bg-[#F8F0F1] border border-[#861A22]/20 rounded-lg px-4 py-2 mb-2">
+                <h2 className="text-xs font-semibold text-[#861A22] uppercase tracking-wider">
+                  {group.name}
+                  <span className="ml-2 text-[#9CA3AF] font-normal normal-case tracking-normal">
+                    ({group.items.length})
+                  </span>
+                </h2>
               </div>
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F3F4F6]">
-                <button
-                  onClick={() => setEditingItem(item)}
-                  className="flex items-center gap-1 text-xs text-[#6B7280] hover:text-[#861A22] transition-colors"
-                >
-                  <PencilIcon />
-                  Editar
-                </button>
-                {item.is_active && (
-                  <button
-                    onClick={() => handleDeactivate(item)}
-                    className="text-xs text-[#9CA3AF] hover:text-red-600 transition-colors ml-auto"
+              <div className="space-y-2">
+                {group.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB] ${!item.is_active ? "opacity-60" : ""}`}
                   >
-                    Desactivar
-                  </button>
-                )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-[#1A1A1A]">{item.name}</span>
+                          {item.is_produced && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">
+                              Producido
+                            </span>
+                          )}
+                          {!item.is_active && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-600">
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#9CA3AF] mt-1">Unidad: {item.unit}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {editingCostId === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editCostValue}
+                              onChange={(e) => setEditCostValue(e.target.value)}
+                              className="w-20 border border-[#E5E7EB] rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-[#861A22]"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveCost(item.id);
+                                if (e.key === "Escape") setEditingCostId(null);
+                              }}
+                            />
+                            <button
+                              onClick={() => handleSaveCost(item.id)}
+                              className="text-green-600 hover:text-green-700 p-1"
+                              aria-label="Guardar coste"
+                            >
+                              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setEditingCostId(null)}
+                              className="text-[#9CA3AF] hover:text-[#6B7280] p-1"
+                              aria-label="Cancelar"
+                            >
+                              <CloseIcon />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingCostId(item.id);
+                              setEditCostValue(item.cost_per_unit.toString());
+                            }}
+                            className="flex items-center gap-1 text-sm text-[#6B7280] hover:text-[#1A1A1A] transition-colors"
+                            title="Editar coste"
+                          >
+                            <span className="font-semibold">{formatCHF(item.cost_per_unit)}</span>
+                            <PencilIcon />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#F3F4F6]">
+                      <button
+                        onClick={() => setEditingItem(item)}
+                        className="flex items-center gap-1 text-xs text-[#6B7280] hover:text-[#861A22] transition-colors"
+                      >
+                        <PencilIcon />
+                        Editar
+                      </button>
+                      {item.is_active && (
+                        <button
+                          onClick={() => handleDeactivate(item)}
+                          className="text-xs text-[#9CA3AF] hover:text-red-600 transition-colors ml-auto"
+                        >
+                          Desactivar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            </section>
           ))
         )}
       </div>
