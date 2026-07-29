@@ -436,6 +436,7 @@ function NewMovementContent() {
         lines: lines.map((l) => ({
           item_id: l.item.id,
           quantity: l.quantity,
+          unit: l.item.unit,
         })),
       };
 
