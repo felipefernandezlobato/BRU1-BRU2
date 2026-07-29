@@ -125,6 +125,8 @@ class MovementUpdate(BaseModel):
     movement_date: Optional[str] = None
     notes: Optional[str] = None
     lines: Optional[list[MovementLineCreate]] = None
+    line_ids: Optional[list[int]] = None
+    line_quantities: Optional[dict[str, float]] = None
 
 
 class MovementLineOut(BaseModel):

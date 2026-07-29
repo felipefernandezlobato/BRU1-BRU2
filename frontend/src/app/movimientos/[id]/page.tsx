@@ -134,6 +134,10 @@ function MovimientoDetailContent({ user }: { user: User }) {
     setEditLines((prev) => prev.filter((l) => l.id !== lineId));
   }
 
+  function updateLineQuantity(lineId: number, qty: number) {
+    setEditLines((prev) => prev.map((l) => l.id === lineId ? { ...l, quantity: qty } : l));
+  }
+
   async function saveChanges() {
     if (!movement) return;
     setSaving(true);
@@ -145,6 +149,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
           movement_date: editDate,
           notes: editNotes || null,
           line_ids: editLines.map((l) => l.id),
+          line_quantities: editLines.reduce((acc, l) => ({ ...acc, [l.id]: l.quantity }), {}),
         }),
       });
       toast("Movimiento actualizado");
@@ -452,37 +457,37 @@ function MovimientoDetailContent({ user }: { user: User }) {
                   {editLines.map((line) => (
                     <div
                       key={line.id}
-                      className="bg-white rounded-xl p-4 shadow-sm flex items-start gap-3"
+                      className="bg-white rounded-xl p-4 shadow-sm"
                       style={{ border: "1px solid #E5E7EB" }}
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[#1A1A1A] text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-semibold text-[#1A1A1A] text-sm flex-1 min-w-0">
                           {line.item_name || `Articulo #${line.item_id}`}
                         </p>
-                        <p className="text-sm text-[#9CA3AF] mt-0.5">
-                          {line.quantity} {line.unit} &middot;{" "}
-                          {formatCHF(line.transfer_price_snapshot)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => removeLine(line.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                        aria-label={`Eliminar ${line.item_name}`}
-                      >
-                        <svg
-                          width={18}
-                          height={18}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                        <button
+                          onClick={() => removeLine(line.id)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                          aria-label={`Eliminar ${line.item_name}`}
                         >
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </button>
+                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <label className="text-sm text-[#9CA3AF]">Cantidad:</label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0.01"
+                          value={line.quantity}
+                          onChange={(e) => updateLineQuantity(line.id, parseFloat(e.target.value) || 0)}
+                          className="w-20 border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#861A22]/30 focus:border-[#861A22]"
+                        />
+                        <span className="text-sm text-[#9CA3AF]">{line.unit}</span>
+                        <span className="text-sm text-[#9CA3AF] ml-auto">{formatCHF(line.transfer_price_snapshot * line.quantity)}</span>
+                      </div>
                     </div>
                   ))}
                   {editLines.length === 0 && (

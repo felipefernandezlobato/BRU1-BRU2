@@ -171,12 +171,18 @@ def update_movement(
         movement.notes = data.notes
 
     if data.lines is not None:
-        # Delete old lines and recreate with fresh cost snapshots
         for line in movement.lines:
             db.delete(line)
         db.flush()
         markup_pct = get_markup_pct(db)
         _create_lines(db, movement.id, data.lines, markup_pct)
+    elif data.line_ids is not None:
+        keep_ids = set(data.line_ids)
+        for line in movement.lines:
+            if line.id not in keep_ids:
+                db.delete(line)
+            elif data.line_quantities and str(line.id) in data.line_quantities:
+                line.quantity = data.line_quantities[str(line.id)]
 
     db.commit()
     db.refresh(movement)
