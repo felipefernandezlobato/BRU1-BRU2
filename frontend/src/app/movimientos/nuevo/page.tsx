@@ -336,17 +336,29 @@ function NewMovementContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
+  // Restore form state from sessionStorage
+  const DRAFT_KEY = "bru_movement_draft";
+  const savedDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Form state
   const [direction, setDirection] = useState<"BRU1_TO_BRU2" | "BRU2_TO_BRU1">(
-    "BRU1_TO_BRU2"
+    savedDraft?.direction || "BRU1_TO_BRU2"
   );
-  const [movementDate, setMovementDate] = useState(getTodayISO());
+  const [movementDate, setMovementDate] = useState(savedDraft?.movementDate || getTodayISO());
   const [lines, setLines] = useState<LineItem[]>([]);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(savedDraft?.notes || "");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showItemSelector, setShowItemSelector] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const draftRestoredRef = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -368,6 +380,43 @@ function NewMovementContent() {
     }
     loadData();
   }, [toast]);
+
+  // Restore draft lines once items are loaded
+  useEffect(() => {
+    if (draftRestoredRef.current || !savedDraft?.lines?.length || items.length === 0) return;
+    draftRestoredRef.current = true;
+    const restored: LineItem[] = [];
+    for (const dl of savedDraft.lines) {
+      const item = items.find((i) => i.id === dl.item_id);
+      if (item) restored.push({ item, quantity: dl.quantity });
+    }
+    if (restored.length > 0) setLines(restored);
+  }, [items, savedDraft]);
+
+  // Save draft to sessionStorage on changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (lines.length === 0 && !notes) {
+      sessionStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    const draft = {
+      direction,
+      movementDate,
+      notes,
+      lines: lines.map((l) => ({ item_id: l.item.id, quantity: l.quantity })),
+    };
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  }, [direction, movementDate, lines, notes, DRAFT_KEY]);
+
+  // Warn before leaving with unsaved data
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (lines.length > 0) e.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [lines]);
 
   // Running total
   const runningTotal = useMemo(
@@ -470,6 +519,7 @@ function NewMovementContent() {
         }
       }
 
+      sessionStorage.removeItem(DRAFT_KEY);
       toast("Movimiento registrado", "success");
       router.push("/");
     } catch {
