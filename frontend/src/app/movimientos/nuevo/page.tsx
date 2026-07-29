@@ -50,6 +50,14 @@ function ItemSelectorModal({
   const [quantity, setQuantity] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus search input when modal opens
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
 
   // Focus quantity input when an item is selected
   useEffect(() => {
@@ -242,6 +250,7 @@ function ItemSelectorModal({
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              ref={searchInputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
