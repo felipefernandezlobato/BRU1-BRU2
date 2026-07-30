@@ -275,10 +275,13 @@ export default function ItemsPage() {
     fetchData();
   }, [fetchData]);
 
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
   const filteredItems = items.filter((item) => {
     if (!showInactive && !item.is_active) return false;
     if (filterCategory !== "all" && item.category_id !== filterCategory) return false;
-    if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !normalize(item.name).includes(normalize(search))) return false;
     return true;
   });
 

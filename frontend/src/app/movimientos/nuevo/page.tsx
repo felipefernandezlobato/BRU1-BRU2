@@ -67,9 +67,12 @@ function ItemSelectorModal({
   }, [selectedItem]);
 
   const filtered = useMemo(() => {
+    const normalize = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const searchNorm = normalize(search);
     return items.filter((it) => {
       if (catFilter !== null && it.category_id !== catFilter) return false;
-      if (search && !it.name.toLowerCase().includes(search.toLowerCase()))
+      if (search && !normalize(it.name).includes(searchNorm))
         return false;
       return true;
     });
