@@ -276,7 +276,7 @@ export default function ItemsPage() {
   }, [fetchData]);
 
   const normalize = (s: string) =>
-    s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const filteredItems = items.filter((item) => {
     if (!showInactive && !item.is_active) return false;

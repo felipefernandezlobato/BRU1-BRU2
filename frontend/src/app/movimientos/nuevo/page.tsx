@@ -67,13 +67,12 @@ function ItemSelectorModal({
   }, [selectedItem]);
 
   const filtered = useMemo(() => {
-    const normalize = (s: string) =>
-      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    const searchNorm = normalize(search);
+    const strip = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = strip(search);
     return items.filter((it) => {
       if (catFilter !== null && it.category_id !== catFilter) return false;
-      if (search && !normalize(it.name).includes(searchNorm))
-        return false;
+      if (q && !strip(it.name).includes(q)) return false;
       return true;
     });
   }, [items, catFilter, search]);
