@@ -29,3 +29,7 @@ backend/data/photos/
 
 # Playwright test artifacts
 .playwright-mcp/
+.vercel
+.env*
+backend/data/*.json
+frontend/tsconfig.tsbuildinfo

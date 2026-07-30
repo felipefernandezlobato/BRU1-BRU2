@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bru-movements-api
+    name: bru1-bru2-api
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
