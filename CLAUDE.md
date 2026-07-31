@@ -2,6 +2,15 @@
 
 Internal tool for BRU Specialty Coffee to track stock movements between BRU1 and BRU2. Staff log daily transfers (primarily BRU1 → BRU2), admins see cost analytics and movement trends.
 
+## IMPORTANT: Always Push to Production
+
+Every change MUST be committed and pushed to GitHub immediately. The user only tests on the live production site — never on localhost. After any code or data change:
+1. Type-check (`npx tsc --noEmit`)
+2. `git add` + `git commit` + `git push origin main`
+3. If database data was changed locally, also apply the same change to the production Neon DB
+
+Never leave changes in local-only state. Both Vercel (frontend) and Render (backend) auto-deploy on push.
+
 ## Business Context
 
 BRU operates two locations. BRU1 is the primary hub — most inventory flows from BRU1 to BRU2 daily. Occasionally items return from BRU2 to BRU1. Moved items include both raw ingredients (coffee, milk, supplies) and finished products produced at BRU1 (pastries, prepared food).
