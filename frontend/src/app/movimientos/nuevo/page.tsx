@@ -69,10 +69,13 @@ function ItemSelectorModal({
   const filtered = useMemo(() => {
     const strip = (s: string) =>
       s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const q = strip(search);
+    const words = strip(search).split(/\s+/).filter(Boolean);
     return items.filter((it) => {
       if (catFilter !== null && it.category_id !== catFilter) return false;
-      if (q && !strip(it.name).includes(q)) return false;
+      if (words.length > 0) {
+        const name = strip(it.name);
+        if (!words.every((w) => name.includes(w))) return false;
+      }
       return true;
     });
   }, [items, catFilter, search]);
