@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -105,6 +106,34 @@ def list_movements(
         .all()
     )
     return [_build_movement_out(m) for m in movements]
+
+
+@router.get("/calendar")
+def calendar_summary(
+    year: int,
+    month: int,
+    direction: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    start = f"{year:04d}-{month:02d}-01"
+    if month == 12:
+        end = f"{year + 1:04d}-01-01"
+    else:
+        end = f"{year:04d}-{month + 1:02d}-01"
+
+    query = db.query(
+        Movement.movement_date,
+        func.count(Movement.id).label("count"),
+    ).filter(
+        Movement.movement_date >= start,
+        Movement.movement_date < end,
+    )
+    if direction:
+        query = query.filter(Movement.direction == direction)
+
+    results = query.group_by(Movement.movement_date).all()
+    return [{"date": r.movement_date, "count": r.count} for r in results]
 
 
 @router.get("/{movement_id}", response_model=MovementOut)
