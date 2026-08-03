@@ -93,7 +93,7 @@ Each item defines its movement unit (the unit used when logging movements).
 | `/` | Home — quick-access to log a new movement + today's movement summary |
 | `/login` | Name grid + PIN pad (same as Checklists) |
 | `/movimientos/nuevo` | New movement form — select direction, add line items (item + qty), submit |
-| `/movimientos` | Movement history list — filterable by date, direction |
+| `/movimientos` | Movement history with calendar view — month grid highlights days with movements, click to filter; direction filter pills below |
 | `/movimientos/[id]` | Movement detail — view/edit a specific movement |
 
 ### Admin Pages
@@ -186,6 +186,7 @@ BRU1-BRU2/
 │   │   │   ├── AppShell.tsx
 │   │   │   ├── AuthGuard.tsx
 │   │   │   ├── BottomNav.tsx
+│   │   │   ├── CalendarView.tsx
 │   │   │   ├── PinPad.tsx
 │   │   │   ├── Toast.tsx
 │   │   │   └── charts/             # Chart.js wrapper components
@@ -269,6 +270,7 @@ BRU1-BRU2/
 
 ### Movements
 - `GET /api/movements` — list with filters (date range, direction, user)
+- `GET /api/movements/calendar` — per-date movement counts for a month (params: year, month, direction)
 - `POST /api/movements` — create movement with line items (multipart form for photo upload)
 - `GET /api/movements/:id` — detail
 - `PUT /api/movements/:id` — edit (within rules)
