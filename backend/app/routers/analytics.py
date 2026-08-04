@@ -25,11 +25,14 @@ router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 @router.get("/summary", response_model=AnalyticsSummary)
 def dashboard_summary(
+    year: int | None = None,
+    month: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
     today = date.today()
-    curr_year, curr_month = today.year, today.month
+    curr_year = year if year else today.year
+    curr_month = month if month else today.month
 
     prev_month = curr_month - 1
     prev_year = curr_year

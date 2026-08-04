@@ -32,16 +32,46 @@ function ChangeBadge({ pct, invertColor }: { pct: number; invertColor?: boolean 
   );
 }
 
+const MONTH_NAMES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
 export default function AdminDashboardPage() {
   const toast = useToast();
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [personnelCost, setPersonnelCost] = useState<PersonnelCost | null>(null);
   const [personnelLoaded, setPersonnelLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+
+  function goToPrevMonth() {
+    if (selectedMonth === 1) {
+      setSelectedYear(selectedYear - 1);
+      setSelectedMonth(12);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  }
+
+  function goToNextMonth() {
+    if (isCurrentMonth) return;
+    if (selectedMonth === 12) {
+      setSelectedYear(selectedYear + 1);
+      setSelectedMonth(1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  }
+
   const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await apiFetch<AnalyticsSummary>("/api/analytics/summary");
+      const data = await apiFetch<AnalyticsSummary>(`/api/analytics/summary?year=${selectedYear}&month=${selectedMonth}`);
       setSummary(data);
     } catch {
       toast("Error al cargar datos", "error");
@@ -49,17 +79,15 @@ export default function AdminDashboardPage() {
       setLoading(false);
     }
 
-    // Fetch current month personnel cost (separate, non-blocking)
     try {
-      const now = new Date();
-      const pc = await apiFetch<PersonnelCost>(`/api/personnel/${now.getFullYear()}/${now.getMonth() + 1}`);
+      const pc = await apiFetch<PersonnelCost>(`/api/personnel/${selectedYear}/${selectedMonth}`);
       setPersonnelCost(pc);
     } catch {
-      // 404 or error — no record for this month
+      setPersonnelCost(null);
     } finally {
       setPersonnelLoaded(true);
     }
-  }, [toast]);
+  }, [toast, selectedYear, selectedMonth]);
 
   useEffect(() => {
     fetchData();
@@ -94,6 +122,35 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="p-4 space-y-6">
+      {/* Month selector */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={goToPrevMonth}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6] active:scale-95 transition-all"
+          aria-label="Mes anterior"
+        >
+          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-[#1A1A1A]">{MONTH_NAMES[selectedMonth - 1]} {selectedYear}</p>
+          {!isCurrentMonth && (
+            <button onClick={() => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth() + 1); }} className="text-xs text-[#861A22] font-medium mt-0.5">
+              Ir a mes actual
+            </button>
+          )}
+        </div>
+        <button
+          onClick={goToNextMonth}
+          disabled={isCurrentMonth}
+          className={`w-10 h-10 flex items-center justify-center rounded-full bg-white border border-[#E5E7EB] transition-all ${
+            isCurrentMonth ? "opacity-30 cursor-not-allowed" : "text-[#6B7280] hover:bg-[#F3F4F6] active:scale-95"
+          }`}
+          aria-label="Mes siguiente"
+        >
+          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
       {/* Key metrics */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
