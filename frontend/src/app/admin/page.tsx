@@ -120,6 +120,22 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Markup profit card */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
+        <p className="text-xs text-[#9CA3AF] font-medium uppercase tracking-wide">
+          BENEFICIO PRODUCCION
+        </p>
+        <p className="text-xl font-bold text-[#1A1A1A] mt-1">
+          {formatCHF(summary.current_month_markup)}
+        </p>
+        <div className="mt-2">
+          <ChangeBadge pct={summary.markup_change_pct} invertColor />
+        </div>
+        <p className="text-xs text-[#9CA3AF] mt-2">
+          Markup sobre articulos producidos
+        </p>
+      </div>
+
       {/* Personnel BRU2 card */}
       {personnelLoaded && (
         <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">

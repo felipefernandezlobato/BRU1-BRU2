@@ -105,6 +105,69 @@ def monthly_totals(db: Session, months: int = 12) -> list[dict]:
     return results
 
 
+def monthly_markup(db: Session, months: int = 12) -> list[dict]:
+    """Return monthly markup profit totals for the last N months."""
+    today = date.today()
+    results = []
+    for i in range(months):
+        month = today.month - i
+        year = today.year
+        while month <= 0:
+            month += 12
+            year -= 1
+        start, end = get_month_range(year, month)
+
+        rows = (
+            db.query(
+                func.sum(MovementLine.cost_per_unit_snapshot * MovementLine.quantity),
+                func.sum(MovementLine.transfer_price_snapshot * MovementLine.quantity),
+                func.count(MovementLine.id),
+            )
+            .join(Movement, Movement.id == MovementLine.movement_id)
+            .filter(
+                Movement.movement_date >= start,
+                Movement.movement_date <= end,
+                MovementLine.markup_pct_snapshot > 0,
+            )
+            .first()
+        )
+
+        total_cogs = round(rows[0] or 0, 2)
+        total_transfer = round(rows[1] or 0, 2)
+        total_markup = round(total_transfer - total_cogs, 2)
+        count = rows[2] or 0
+
+        results.append({
+            "year": year,
+            "month": month,
+            "total_cogs": total_cogs,
+            "total_transfer": total_transfer,
+            "total_markup": total_markup,
+            "count": count,
+        })
+    results.reverse()
+    return results
+
+
+def markup_summary(db: Session, year: int, month: int) -> float:
+    """Return total markup for a given month."""
+    start, end = get_month_range(year, month)
+    row = (
+        db.query(
+            func.sum(MovementLine.transfer_price_snapshot * MovementLine.quantity)
+            - func.sum(MovementLine.cost_per_unit_snapshot * MovementLine.quantity),
+        )
+        .join(Movement, Movement.id == MovementLine.movement_id)
+        .filter(
+            Movement.movement_date >= start,
+            Movement.movement_date <= end,
+            MovementLine.markup_pct_snapshot > 0,
+        )
+        .scalar()
+    )
+    return round(row or 0, 2)
+
+
 def category_comparison(db: Session, year: int, month: int) -> list[dict]:
     """Compare category totals between current and previous month."""
     start_curr, end_curr = get_month_range(year, month)

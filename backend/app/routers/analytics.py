@@ -15,6 +15,8 @@ from app.services.analytics import (
     category_comparison,
     monthly_totals,
     category_breakdown,
+    monthly_markup,
+    markup_summary,
 )
 from sqlalchemy import func
 
@@ -51,6 +53,12 @@ def dashboard_summary(
     top_qty = top_items_by_quantity(db, start_curr, end_curr)
     cat_comp = category_comparison(db, curr_year, curr_month)
 
+    curr_markup = markup_summary(db, curr_year, curr_month)
+    prev_markup = markup_summary(db, prev_year, prev_month)
+    markup_change = 0.0
+    if prev_markup > 0:
+        markup_change = round(((curr_markup - prev_markup) / prev_markup) * 100, 2)
+
     return AnalyticsSummary(
         current_month_cost=curr["total_cost"],
         previous_month_cost=prev["total_cost"],
@@ -61,6 +69,9 @@ def dashboard_summary(
         top_items_by_cost=top_cost,
         top_items_by_quantity=top_qty,
         category_comparison=cat_comp,
+        current_month_markup=curr_markup,
+        previous_month_markup=prev_markup,
+        markup_change_pct=markup_change,
     )
 
 
@@ -71,6 +82,15 @@ def get_monthly_totals(
     current_user: User = Depends(require_admin),
 ):
     return monthly_totals(db, months)
+
+
+@router.get("/markup")
+def get_markup_totals(
+    months: int = 12,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return monthly_markup(db, months)
 
 
 @router.get("/categories")

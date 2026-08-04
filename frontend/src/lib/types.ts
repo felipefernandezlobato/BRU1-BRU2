@@ -62,6 +62,9 @@ export interface AnalyticsSummary {
   top_items_by_cost: { name: string; total: number }[];
   top_items_by_quantity: { name: string; total: number }[];
   category_comparison: { category: string; current: number; previous: number; change_pct: number }[];
+  current_month_markup: number;
+  previous_month_markup: number;
+  markup_change_pct: number;
 }
 
 export interface Setting {

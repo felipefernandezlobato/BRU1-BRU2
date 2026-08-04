@@ -182,6 +182,9 @@ class AnalyticsSummary(BaseModel):
     top_items_by_cost: list[dict] = []
     top_items_by_quantity: list[dict] = []
     category_comparison: list[dict] = []
+    current_month_markup: float = 0.0
+    previous_month_markup: float = 0.0
+    markup_change_pct: float = 0.0
 
 
 # --- Login Response ---

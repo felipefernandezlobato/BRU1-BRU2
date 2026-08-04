@@ -21,6 +21,15 @@ interface MonthlyCombinedData {
   rent: number;
 }
 
+interface MonthlyMarkupData {
+  year: number;
+  month: number;
+  total_cogs: number;
+  total_transfer: number;
+  total_markup: number;
+  count: number;
+}
+
 interface CategoryData {
   category: string;
   total: number;
@@ -58,22 +67,25 @@ export default function AnalyticsPage() {
   const [combinedData, setCombinedData] = useState<MonthlyCombinedData[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [directionData, setDirectionData] = useState<DirectionData[]>([]);
+  const [markupData, setMarkupData] = useState<MonthlyMarkupData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const { start_date, end_date } = getDateRange(months);
-      const [monthly, combined, categories, direction] = await Promise.all([
+      const [monthly, combined, categories, direction, markup] = await Promise.all([
         apiFetch<MonthlyData[]>(`/api/analytics/monthly?months=${months}`),
         apiFetch<MonthlyCombinedData[]>(`/api/analytics/monthly-combined?months=${months}`),
         apiFetch<CategoryData[]>(`/api/analytics/categories?start_date=${start_date}&end_date=${end_date}`),
         apiFetch<DirectionData[]>(`/api/analytics/direction?start_date=${start_date}&end_date=${end_date}`),
+        apiFetch<MonthlyMarkupData[]>(`/api/analytics/markup?months=${months}`),
       ]);
       setMonthlyData(monthly);
       setCombinedData(combined);
       setCategoryData(categories);
       setDirectionData(direction);
+      setMarkupData(markup);
     } catch {
       toast("Error al cargar analiticas", "error");
     } finally {
@@ -109,6 +121,10 @@ export default function AnalyticsPage() {
     d.direction === "BRU1_TO_BRU2" ? "BRU1 → BRU2" : "BRU2 → BRU1"
   );
   const dirValues = directionData.map((d) => d.total_cost);
+
+  const markupLabels = markupData.map((d) => MONTH_NAMES[d.month - 1] || `${d.month}`);
+  const markupValues = markupData.map((d) => d.total_markup);
+  const totalMarkup = markupData.reduce((s, d) => s + d.total_markup, 0);
 
   return (
     <div className="p-4 space-y-6">
@@ -192,6 +208,22 @@ export default function AnalyticsPage() {
               horizontal
               color="#861A22"
             />
+          </div>
+
+          {/* Monthly markup profit */}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
+            <BarChart
+              labels={markupLabels}
+              data={markupValues}
+              title="Beneficio produccion mensual"
+              color="#16A34A"
+            />
+            <div className="mt-4 pt-3 border-t border-[#E5E7EB]">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-[#1A1A1A]">Total beneficio</span>
+                <span className="text-sm font-bold text-[#1A1A1A]">CHF {fmtCHF(totalMarkup)}</span>
+              </div>
+            </div>
           </div>
         </>
       )}
