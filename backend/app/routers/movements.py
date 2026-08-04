@@ -213,6 +213,10 @@ def update_movement(
             elif data.line_quantities and str(line.id) in data.line_quantities:
                 line.quantity = data.line_quantities[str(line.id)]
 
+    if data.new_lines:
+        markup_pct = get_markup_pct(db)
+        _create_lines(db, movement.id, data.new_lines, markup_pct)
+
     db.commit()
     db.refresh(movement)
     return _build_movement_out(movement)
