@@ -510,24 +510,24 @@ function NewMovementContent() {
 
       // Upload photo if present
       if (photo) {
-        try {
-          const formData = new FormData();
-          formData.append("photo", photo);
+        const formData = new FormData();
+        formData.append("file", photo);
 
-          const token = localStorage.getItem("bru_movements_token");
-          const API_BASE =
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
+        const token = localStorage.getItem("bru_movements_token");
+        const API_BASE =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
 
-          await fetch(`${API_BASE}/api/movements/${movement.id}/photo`, {
-            method: "POST",
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: formData,
-          });
-        } catch {
-          // Photo upload failed but movement was created
+        const photoRes = await fetch(`${API_BASE}/api/movements/${movement.id}/photo`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData,
+        });
+
+        if (!photoRes.ok) {
           toast("Movimiento creado, pero error al subir foto", "error");
+          sessionStorage.removeItem(DRAFT_KEY);
           router.push("/");
           return;
         }
