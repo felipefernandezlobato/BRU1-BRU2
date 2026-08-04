@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiFetch, apiFetchBlob } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Movement, MovementLine, User } from "@/lib/types";
 import { formatCHF } from "@/lib/format";
@@ -95,6 +95,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
 
   // Lightbox state
   const [showLightbox, setShowLightbox] = useState(false);
+  const [photoBlobUrl, setPhotoBlobUrl] = useState<string | null>(null);
 
   const fetchMovement = useCallback(async () => {
     try {
@@ -116,6 +117,15 @@ function MovimientoDetailContent({ user }: { user: User }) {
   useEffect(() => {
     fetchMovement();
   }, [fetchMovement]);
+
+  useEffect(() => {
+    if (!movement?.photo_filename) { setPhotoBlobUrl(null); return; }
+    let revoked = false;
+    apiFetchBlob(`/api/movements/${id}/photo`).then((url) => {
+      if (!revoked) setPhotoBlobUrl(url);
+    });
+    return () => { revoked = true; };
+  }, [movement?.photo_filename, id]);
 
   function startEditing() {
     if (!movement) return;
@@ -265,7 +275,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
               </div>
 
               {/* Photo section */}
-              {movement.photo_filename && (
+              {movement.photo_filename && photoBlobUrl && (
                 <div className="mb-4">
                   <button
                     onClick={() => setShowLightbox(true)}
@@ -274,7 +284,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={apiUrl(`/api/movements/${id}/photo`)}
+                      src={photoBlobUrl}
                       alt="Foto del movimiento"
                       className="w-full h-auto object-cover"
                     />
@@ -555,7 +565,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
           )}
 
           {/* Lightbox */}
-          {showLightbox && movement?.photo_filename && (
+          {showLightbox && photoBlobUrl && (
             <div
               className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
               onClick={() => setShowLightbox(false)}
@@ -581,7 +591,7 @@ function MovimientoDetailContent({ user }: { user: User }) {
               </button>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={apiUrl(`/api/movements/${id}/photo`)}
+                src={photoBlobUrl}
                 alt="Foto del movimiento"
                 className="max-w-full max-h-full object-contain rounded-lg"
                 onClick={(e) => e.stopPropagation()}

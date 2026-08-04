@@ -34,3 +34,19 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
+
+export async function apiFetchBlob(path: string): Promise<string | null> {
+  const authHeaders: Record<string, string> = {};
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("bru_movements_token");
+    if (token) authHeaders["Authorization"] = `Bearer ${token}`;
+  }
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
+}
