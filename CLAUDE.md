@@ -101,11 +101,12 @@ Each item defines its movement unit (the unit used when logging movements).
 
 | Route | Purpose |
 |---|---|
-| `/admin` | Dashboard — key metrics, monthly cost summary, recent movements |
-| `/admin/analytics` | Charts and graphs — monthly totals, category breakdowns, item trends, cost analysis |
-| `/admin/items` | Item catalog management — CRUD, set costs, mark as produced, sync from Escandallos |
+| `/admin` | Dashboard — key metrics with month selector (arrows to navigate), cost/movement/markup/personnel cards, top items, category comparison |
+| `/admin/analytics` | Charts — monthly cost bar, combined cost (movements+personnel+rent) stacked bar, category doughnut, direction split, markup profit (green bars) |
+| `/admin/items` | Item catalog — CRUD, cost editing, produced flag, Escandallos sync. Accent-insensitive search |
 | `/admin/categories` | Category management — CRUD |
 | `/admin/team` | User management — CRUD + PIN reset |
+| `/admin/personnel` | Personnel cost calculator — E2N ratio BRU1/BRU2, calculates BRU2 share of salary |
 | `/admin/settings` | Global settings — markup %, Escandallos API URL |
 
 ### Navigation
@@ -251,6 +252,10 @@ BRU1-BRU2/
 ### CostHistory
 - id, item_id (FK), old_cost, new_cost, changed_at, change_source (manual/sync)
 
+### PersonnelCost
+- id, year, month, total_paid, bru1_e2n, bru2_e2n, ratio (calculated), bru2_cost (calculated), notes, created_at
+- Unique constraint on (year, month)
+
 ## API Endpoints
 
 ### Auth
@@ -281,11 +286,19 @@ BRU1-BRU2/
 - `POST /api/movements/:id/photo` — upload/replace photo
 
 ### Analytics (admin)
-- `GET /api/analytics/summary` — dashboard metrics (current + previous month)
+- `GET /api/analytics/summary?year=&month=` — dashboard metrics (selected or current month vs previous)
 - `GET /api/analytics/monthly` — monthly cost totals (last 12 months)
+- `GET /api/analytics/monthly-combined` — combined cost (movements + personnel + rent)
+- `GET /api/analytics/markup` — monthly markup profit totals (COGS vs transfer price)
 - `GET /api/analytics/categories` — cost breakdown by category (date range)
 - `GET /api/analytics/items` — item-level trends (date range, item filter)
 - `GET /api/analytics/direction` — BRU1→BRU2 vs BRU2→BRU1 split
+
+### Personnel (admin)
+- `GET /api/personnel/` — list all monthly personnel cost records
+- `POST /api/personnel/` — create/upsert month record (auto-calculates ratio + BRU2 cost)
+- `GET /api/personnel/{year}/{month}` — get specific month
+- `DELETE /api/personnel/{year}/{month}` — delete
 
 ### Sync (admin)
 - `POST /api/sync/escandallos` — pull costs from Escandallos API, return matched items for confirmation
@@ -318,10 +331,16 @@ cd backend && source venv/bin/activate && pytest tests/ -v
 
 ## Deploy
 
-1. **Neon:** Free project (EU Frankfurt) → connection string
-2. **Render:** Connect GitHub → set `DATABASE_URL` + `CORS_ORIGINS` + `SECRET_KEY` env vars
-3. **Vercel:** Import repo → set `NEXT_PUBLIC_API_URL` to Render URL
-4. Both auto-deploy on `git push`
+- **Neon:** Project `BRU1-BRU2` (restless-wind-84518844), EU Frankfurt, org `org-nameless-math-59260159`
+- **Render:** Service `bru1-bru2-api`, auto-deploys on push. Env: `DATABASE_URL`, `CORS_ORIGINS`, `SECRET_KEY`
+- **Vercel:** Project `bru1-bru2` under `bruteam`, auto-deploys on push. Env: `NEXT_PUBLIC_API_URL`
+- **GitHub:** https://github.com/felipefernandezlobato/BRU1-BRU2
+
+### Data sync
+When items/prices change locally, sync to Neon production DB. Use the import scripts in `backend/scripts/` or direct Python with the Neon connection string.
+
+### Item naming
+All item names are ASCII — no accents/tildes. Search is accent-insensitive (NFD normalization). Coffee names follow Escandallos naming: `{Origin} {Variety} {size}` (e.g., "Ethiopia By Dabov 1kg", "COE Mexico 130g").
 
 ## Key Constraints
 

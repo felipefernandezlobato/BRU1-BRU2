@@ -22,8 +22,14 @@
 | 9. Movement list + detail pages | ✅ DONE | build clean |
 | 10. Admin pages + analytics charts | ✅ DONE | build clean, analytics data fix applied |
 | 11. Polish + deploy | ✅ DONE | 69 backend tests, 12 frontend routes, browser tested |
+| 12. Personnel cost feature | ✅ DONE | 9 personnel tests (78 total) |
+| 13. Historical data import (Feb-Jul 2026) | ✅ DONE | 114 movements, 1235 lines, CHF 17K+ |
+| 14. Escandallos cost sync + item cleanup | ✅ DONE | 186 active items, accent-free names |
+| 15. Coffee catalog (all sizes/types) | ✅ DONE | 64 coffee items (1kg, 200g, 130g, capsules, frozen, retail) |
+| 16. Markup profit tracking | ✅ DONE | 4 new tests (82 total) |
+| 17. Dashboard month selector | ✅ DONE | Navigate months with arrows |
 
-**Total: 69 backend tests passing, 12 frontend routes compiling, full E2E browser test completed.**
+**Final: 82 backend tests passing, 13 frontend routes, 186 active items, deployed on Vercel+Render+Neon.**
 
 ## Global Constraints
 
