@@ -51,7 +51,8 @@ BRU2 "buys" produced items from BRU1 at COGS + a global markup percentage. Raw i
 ### Markup (Internal Transfer Pricing)
 
 - **Produced items** (items BRU1 makes — pastries, prepared food, etc.) are transferred at **COGS + a global markup %**
-- The markup percentage is a single global setting (e.g., 30%) configurable by admins in settings
+- Current markup is **50%** — COGS come from Escandallos recipe costs
+- The markup percentage is a single global setting configurable by admins in settings
 - **Non-produced items** (raw ingredients, retail coffee, supplies) transfer at cost (0% markup)
 - The transfer price is calculated automatically: `transfer_price = cost_per_unit * (1 + markup_pct / 100)` for produced items
 - The markup % and whether an item is "produced" are set per item in the catalog
@@ -94,7 +95,7 @@ Each item defines its movement unit (the unit used when logging movements).
 | `/login` | Name grid + PIN pad (same as Checklists) |
 | `/movimientos/nuevo` | New movement form — select direction, add line items (item + qty), submit |
 | `/movimientos` | Movement history with calendar view — month grid highlights days with movements, click to filter; direction filter pills below |
-| `/movimientos/[id]` | Movement detail — view/edit a specific movement |
+| `/movimientos/[id]` | Movement detail — view/edit (add items, change quantities, upload photo) |
 
 ### Admin Pages
 
@@ -187,11 +188,12 @@ BRU1-BRU2/
 │   │   │   ├── AuthGuard.tsx
 │   │   │   ├── BottomNav.tsx
 │   │   │   ├── CalendarView.tsx
+│   │   │   ├── ItemSelectorModal.tsx
 │   │   │   ├── PinPad.tsx
 │   │   │   ├── Toast.tsx
 │   │   │   └── charts/             # Chart.js wrapper components
 │   │   └── lib/
-│   │       ├── api.ts               # apiFetch<T>() with auth
+│   │       ├── api.ts               # apiFetch<T>(), apiFetchBlob() with auth
 │   │       ├── types.ts             # TypeScript interfaces
 │   │       └── format.ts            # Currency/quantity formatters
 │   └── public/
