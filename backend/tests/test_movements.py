@@ -1,6 +1,9 @@
+import io
+import os
 from datetime import datetime, timedelta
 
 import pytest
+from PIL import Image
 
 from app.models import Setting, Movement, MovementLine
 
@@ -278,3 +281,41 @@ def test_edit_movement_lines_recalculated(
     assert len(data["lines"]) == 1
     assert data["lines"][0]["item_id"] == item_croissant.id
     assert data["lines"][0]["markup_pct_snapshot"] == 30.0
+
+
+def _fake_jpeg_bytes():
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10), color="red").save(buf, "JPEG")
+    return buf.getvalue()
+
+
+def test_photo_survives_disk_wipe(staff_client, staff_user, item_coffee, db):
+    """Render's free plan has no persistent disk: local files vanish on every
+    restart/redeploy. The photo must be readable back from the database even
+    when the on-disk file is gone, or staff see the camera icon with no way
+    to actually view the photo."""
+    _seed_markup(db)
+
+    create_resp = staff_client.post("/api/movements/", json={
+        "direction": "BRU1_TO_BRU2",
+        "movement_date": "2026-07-28",
+        "lines": [{"item_id": item_coffee.id, "quantity": 1, "unit": "unidad"}],
+    })
+    movement_id = create_resp.json()["id"]
+
+    upload_resp = staff_client.post(
+        f"/api/movements/{movement_id}/photo",
+        files={"file": ("delivery.jpg", _fake_jpeg_bytes(), "image/jpeg")},
+    )
+    assert upload_resp.status_code == 200
+
+    # Simulate a Render restart wiping the ephemeral filesystem.
+    upload_dir = os.environ.get("UPLOAD_DIR", "data/photos")
+    filename = upload_resp.json()["filename"]
+    stale_path = os.path.join(upload_dir, filename)
+    if os.path.exists(stale_path):
+        os.remove(stale_path)
+
+    photo_resp = staff_client.get(f"/api/movements/{movement_id}/photo")
+    assert photo_resp.status_code == 200
+    assert photo_resp.content

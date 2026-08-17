@@ -1,9 +1,8 @@
-import os
 import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -13,7 +12,6 @@ from app.models import Movement, MovementLine, Item, User
 from app.schemas import MovementCreate, MovementUpdate, MovementOut
 from app.services.costes import get_markup_pct, calculate_transfer_price
 
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "data/photos")
 VALID_DIRECTIONS = {"BRU1_TO_BRU2", "BRU2_TO_BRU1"}
 
 router = APIRouter(prefix="/api/movements", tags=["movements"])
@@ -268,19 +266,13 @@ def upload_photo(
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-    # Delete old photo if replacing
-    if movement.photo_filename:
-        old_path = os.path.join(UPLOAD_DIR, movement.photo_filename)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+    buffer = io.BytesIO()
+    img.save(buffer, "JPEG", quality=80)
 
     filename = f"{movement.id}_{uuid.uuid4().hex[:8]}.jpg"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    img.save(filepath, "JPEG", quality=80)
-
     movement.photo_filename = filename
+    movement.photo_data = buffer.getvalue()
+    movement.photo_content_type = "image/jpeg"
     db.commit()
 
     return {"filename": filename}
@@ -295,11 +287,7 @@ def get_photo(
     movement = db.query(Movement).filter(Movement.id == movement_id).first()
     if not movement:
         raise HTTPException(404, "Movement not found")
-    if not movement.photo_filename:
+    if not movement.photo_data:
         raise HTTPException(404, "No photo for this movement")
 
-    filepath = os.path.join(UPLOAD_DIR, movement.photo_filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(404, "Photo file not found")
-
-    return FileResponse(filepath, media_type="image/jpeg")
+    return Response(content=movement.photo_data, media_type=movement.photo_content_type or "image/jpeg")

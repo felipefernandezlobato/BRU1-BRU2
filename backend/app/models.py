@@ -58,6 +58,8 @@ class Movement(Base):
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     notes: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     photo_filename: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    photo_data: Mapped[bytes | None] = mapped_column(sa.LargeBinary, nullable=True)
+    photo_content_type: Mapped[str | None] = mapped_column(sa.String(50), nullable=True)
     movement_date: Mapped[str] = mapped_column(sa.String(10))
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, onupdate=datetime.utcnow)
