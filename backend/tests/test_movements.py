@@ -289,6 +289,14 @@ def _fake_jpeg_bytes():
     return buf.getvalue()
 
 
+def _fake_heic_bytes():
+    import pillow_heif
+
+    buf = io.BytesIO()
+    pillow_heif.from_pillow(Image.new("RGB", (10, 10), color="blue")).save(buf, quality=80)
+    return buf.getvalue()
+
+
 def test_photo_survives_disk_wipe(staff_client, staff_user, item_coffee, db):
     """Render's free plan has no persistent disk: local files vanish on every
     restart/redeploy. The photo must be readable back from the database even
@@ -315,6 +323,30 @@ def test_photo_survives_disk_wipe(staff_client, staff_user, item_coffee, db):
     stale_path = os.path.join(upload_dir, filename)
     if os.path.exists(stale_path):
         os.remove(stale_path)
+
+    photo_resp = staff_client.get(f"/api/movements/{movement_id}/photo")
+    assert photo_resp.status_code == 200
+    assert photo_resp.content
+
+
+def test_upload_heic_photo(staff_client, staff_user, item_coffee, db):
+    """iPhones store photo library images as HEIC. Staff picking an existing
+    photo (not just live camera capture) must be able to upload it — plain
+    Pillow can't decode HEIC without the pillow-heif plugin registered."""
+    _seed_markup(db)
+
+    create_resp = staff_client.post("/api/movements/", json={
+        "direction": "BRU1_TO_BRU2",
+        "movement_date": "2026-07-28",
+        "lines": [{"item_id": item_coffee.id, "quantity": 1, "unit": "unidad"}],
+    })
+    movement_id = create_resp.json()["id"]
+
+    upload_resp = staff_client.post(
+        f"/api/movements/{movement_id}/photo",
+        files={"file": ("delivery.heic", _fake_heic_bytes(), "image/heic")},
+    )
+    assert upload_resp.status_code == 200
 
     photo_resp = staff_client.get(f"/api/movements/{movement_id}/photo")
     assert photo_resp.status_code == 200

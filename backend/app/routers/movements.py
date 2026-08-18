@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime, timedelta
 
+import pillow_heif
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+pillow_heif.register_heif_opener()
 
 from app.auth import get_current_user
 from app.database import get_db
