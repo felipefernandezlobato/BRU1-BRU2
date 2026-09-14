@@ -332,7 +332,8 @@ cd backend && source venv/bin/activate && pytest tests/ -v
 ## Deploy
 
 - **Neon:** Project `BRU1-BRU2` (restless-wind-84518844), EU Frankfurt, org `org-nameless-math-59260159`
-- **Render:** Service `bru1-bru2-api`, auto-deploys on push. Env: `DATABASE_URL`, `CORS_ORIGINS`, `SECRET_KEY`
+- **Render:** Live API at `https://bru1-bru2.onrender.com`, auto-deploys on push. Env: `DATABASE_URL`, `CORS_ORIGINS`, `SECRET_KEY`. Note: `render.yaml` still declares the name `bru1-bru2-api`, which does not match the deployed service
+- **Vercel:** Live frontend at `https://bru1-bru2.vercel.app`
 - **Vercel:** Project `bru1-bru2` under `bruteam`, auto-deploys on push. Env: `NEXT_PUBLIC_API_URL`
 - **GitHub:** https://github.com/felipefernandezlobato/BRU1-BRU2
 
