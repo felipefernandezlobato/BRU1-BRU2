@@ -28,8 +28,27 @@
 | 15. Coffee catalog (all sizes/types) | ✅ DONE | 64 coffee items (1kg, 200g, 130g, capsules, frozen, retail) |
 | 16. Markup profit tracking | ✅ DONE | 4 new tests (82 total) |
 | 17. Dashboard month selector | ✅ DONE | Navigate months with arrows |
+| 18. Movement photos in Postgres | ✅ DONE | Render's free disk is ephemeral, so photos moved into the DB |
+| 19. HEIC photo decoding | ✅ DONE | iPhone library uploads were failing to decode |
+| 20. Brewing Dealers (BD) coffee items | ✅ DONE | 9 items, first BD wave (Escandallos 2026-08-04) |
+| 21. September 2026 coffee catch-up | ✅ DONE | 22 items + 1 relink (see below) |
 
-**Final: 82 backend tests passing, 13 frontend routes, 186 active items, deployed on Vercel+Render+Neon.**
+**Current: 84 backend tests passing, 13 frontend routes, 216 active items (272 total), 92 active in `Cafe & Te`, deployed on Vercel+Render+Neon.**
+
+### Step 21 detail (2026-09-14)
+
+Diffed the Escandallos `Café` category (106 ingredients) against this catalog and added the 22 real gaps via `backend/scripts/add_coffee_items_sept.py`:
+
+- **10** Brewing Dealers second wave (Escandallos `fecha_actualizacion` 2026-09-03)
+- **2** Dabov additions from 2026-09-10 — `Ethiopia Karamo Washed 1kg` and `COE Salvador Los Angeles 2025 300g`, both at **cost 0.00 because Escandallos has no purchase price for them yet**. These still need real costs.
+- **6** frozen items — the 5 Frozen BD tubes plus Frozen Mexico Geisha, priced from their origin bean
+- **4** bulk per-kilo blends — MARRON 22.98, ROJO / BLACK / GOLD at 0.00 (GOLD created inactive, mirroring Escandallos)
+
+Also set `escandallos_name = "130g DABOV MEXICO Geisha"` on the existing `COE Mexico 130g`. Upstream omits "COE" from that name, so cost sync would never have matched it and a naive import would have created a duplicate coffee.
+
+Deliberately skipped: `Tubos Frozen Bru1/Bru2` (packaging, not coffee) and `Coffee Retail Bags` (inactive upstream placeholder).
+
+See the **Comparing the catalog against Escandallos** section in CLAUDE.md for the canonicalization the diff requires.
 
 ## Global Constraints
 

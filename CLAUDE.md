@@ -323,25 +323,47 @@ cd frontend
 NEXT_PUBLIC_API_URL=http://localhost:8002 npm run dev
 # → http://localhost:3002
 
-# Default admin: name="Admin", PIN="0000"
+# Default admin: name="Admin", PIN="0000" — seed only. The production PINs
+# are different, so you cannot log into the live API with this.
 
 # Tests
 cd backend && source venv/bin/activate && pytest tests/ -v
 ```
 
+Note the local SQLite database is empty (no tables), so a local server has no catalog to serve. See **Data sync** below.
+
 ## Deploy
 
 - **Neon:** Project `BRU1-BRU2` (restless-wind-84518844), EU Frankfurt, org `org-nameless-math-59260159`
 - **Render:** Live API at `https://bru1-bru2.onrender.com`, auto-deploys on push. Env: `DATABASE_URL`, `CORS_ORIGINS`, `SECRET_KEY`. Note: `render.yaml` still declares the name `bru1-bru2-api`, which does not match the deployed service
-- **Vercel:** Live frontend at `https://bru1-bru2.vercel.app`
-- **Vercel:** Project `bru1-bru2` under `bruteam`, auto-deploys on push. Env: `NEXT_PUBLIC_API_URL`
+- **Vercel:** Live frontend at `https://bru1-bru2.vercel.app`, project `bru1-bru2` under `bruteam`, auto-deploys on push. Env: `NEXT_PUBLIC_API_URL`
 - **GitHub:** https://github.com/felipefernandezlobato/BRU1-BRU2
 
+If the API URL is ever in doubt, `NEXT_PUBLIC_API_URL` is inlined at build time — grep the deployed JS chunks under `https://bru1-bru2.vercel.app/_next/static/chunks/` for `onrender.com`.
+
 ### Data sync
-When items/prices change locally, sync to Neon production DB. Use the import scripts in `backend/scripts/` or direct Python with the Neon connection string.
+**The local SQLite (`backend/bru_movements.db`) is empty — it has zero tables.** Production Neon is the only live database, so run catalog and data scripts directly against it:
+
+```bash
+cd backend && source venv/bin/activate
+DATABASE_URL='<neon-url>' python scripts/<script>.py
+```
+
+The Neon connection string is hardcoded in `backend/import_to_production.py`. Write every script to be idempotent (skip rows matched by name) so re-running it is a safe way to confirm the write landed — `0 created` on the second run is the proof.
 
 ### Item naming
-All item names are ASCII — no accents/tildes. Search is accent-insensitive (NFD normalization). Coffee names follow Escandallos naming: `{Origin} {Variety} {size}` (e.g., "Ethiopia By Dabov 1kg", "COE Mexico 130g").
+All item names are ASCII — no accents/tildes. Search is accent-insensitive (NFD normalization). Coffee names follow Escandallos naming: `{Origin} {Variety} {size}` (e.g., "Ethiopia By Dabov 1kg", "COE Mexico 130g"). Brewing Dealers items use `Cafe {size} BD {name}`.
+
+The `escandallos_name` column stores the upstream name verbatim, accents included — it is a sync matching key, not a display name, so the ASCII rule does not apply to it.
+
+### Comparing the catalog against Escandallos
+Escandallos names the same coffee in the opposite order (`200g DABOV Ethiopia By Dabov` vs `Ethiopia By Dabov 200g`), and stores frozen coffee as `Bru1`/`Bru2` pairs that collapse to one item here. A raw name diff is therefore meaningless — it reported 88 of 106 coffees as missing when only 32 were real gaps.
+
+Canonicalize both sides to a `(size, sorted-token-set)` key first: strip accents, lowercase, normalize `ruanda`→`rwanda` / `sugarcane`→`sugar` / `geisha`→`gesha`, extract the size token (`1kg|130g|300g|200g|100g|250g`) from anywhere in the string, then drop the filler tokens `cafe dabov por by bru1 bru2 gr en grano kilo` — but keep `bd`, which identifies the roaster. Index BRU items by `escandallos_name` as well as `name`.
+
+Escandallos keeps coffee in `categorias.id = 5` (`Café`). Use `ingredientes.fecha_actualizacion` to tell genuinely new items from long-standing gaps. Frozen items carry `precio_compra = 0.00` upstream; their real cost comes from the origin bean via `frozen_origen_id`, which is the convention the `Frozen *` items here already follow.
+
+See `backend/scripts/add_coffee_items_sept.py` for a worked example.
 
 ## Key Constraints
 
