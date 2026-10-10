@@ -18,9 +18,22 @@ interface ItemFormData {
 }
 
 interface SyncPreview {
+  item_id: number;
   name: string;
+  escandallos_name: string;
   current_cost: number;
   new_cost: number;
+}
+
+interface SyncSkipped {
+  name: string;
+  escandallos_name: string;
+  reason: string;
+}
+
+interface SyncResult {
+  matches: SyncPreview[];
+  skipped: SyncSkipped[];
 }
 
 function PencilIcon() {
@@ -177,10 +190,12 @@ function SyncModal({
   onConfirm,
   onClose,
 }: {
-  previews: SyncPreview[];
+  previews: SyncResult;
   onConfirm: () => Promise<void>;
   onClose: () => void;
 }) {
+  const matches = previews.matches;
+  const skipped = previews.skipped;
   const [confirming, setConfirming] = useState(false);
 
   async function handleConfirm() {
@@ -204,12 +219,12 @@ function SyncModal({
           </button>
         </div>
         <div className="p-4">
-          {previews.length === 0 ? (
+          {matches.length === 0 ? (
             <p className="text-sm text-[#9CA3AF] text-center py-4">No hay cambios de coste</p>
           ) : (
             <div className="space-y-2 mb-4">
-              {previews.map((p) => (
-                <div key={p.name} className="flex items-center justify-between text-sm border-b border-[#F3F4F6] py-2">
+              {matches.map((p) => (
+                <div key={p.item_id} className="flex items-center justify-between text-sm border-b border-[#F3F4F6] py-2">
                   <span className="text-[#1A1A1A] font-medium truncate mr-2">{p.name}</span>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-[#9CA3AF] line-through">{formatCHF(p.current_cost)}</span>
@@ -219,6 +234,23 @@ function SyncModal({
               ))}
             </div>
           )}
+
+          {/* Items deliberately left alone, so a silent skip is never invisible */}
+          {skipped.length > 0 && (
+            <details className="mb-4">
+              <summary className="text-xs text-[#9CA3AF] cursor-pointer">
+                {skipped.length} sin sincronizar
+              </summary>
+              <div className="mt-2 space-y-1">
+                {skipped.map((s) => (
+                  <div key={s.name} className="flex items-center justify-between text-xs text-[#9CA3AF] py-1">
+                    <span className="truncate mr-2">{s.name}</span>
+                    <span className="shrink-0">{s.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
           <div className="flex gap-3">
             <button
               onClick={onClose}
@@ -226,7 +258,7 @@ function SyncModal({
             >
               Cancelar
             </button>
-            {previews.length > 0 && (
+            {matches.length > 0 && (
               <button
                 onClick={handleConfirm}
                 disabled={confirming}
@@ -254,7 +286,7 @@ export default function ItemsPage() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editingCostId, setEditingCostId] = useState<number | null>(null);
   const [editCostValue, setEditCostValue] = useState("");
-  const [syncPreviews, setSyncPreviews] = useState<SyncPreview[] | null>(null);
+  const [syncPreviews, setSyncPreviews] = useState<SyncResult | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -354,19 +386,26 @@ export default function ItemsPage() {
 
   async function handleSync() {
     try {
-      const previews = await apiFetch<SyncPreview[]>("/api/sync/escandallos", {
+      const result = await apiFetch<SyncResult>("/api/sync/escandallos", {
         method: "POST",
       });
-      setSyncPreviews(previews);
+      setSyncPreviews(result);
     } catch {
       toast("Error al sincronizar", "error");
     }
   }
 
   async function handleConfirmSync() {
+    if (!syncPreviews) return;
     try {
       const result = await apiFetch<{ updated: number }>("/api/sync/confirm", {
         method: "POST",
+        body: JSON.stringify(
+          syncPreviews.matches.map((p) => ({
+            item_id: p.item_id,
+            new_cost: p.new_cost,
+          }))
+        ),
       });
       toast(`${result.updated} costes actualizados`);
       setSyncPreviews(null);

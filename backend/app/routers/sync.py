@@ -1,21 +1,17 @@
-import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth import require_admin
 from app.database import get_db
-from app.models import Item, Setting, CostHistory, User
+from app.models import Item, CostHistory, User
+from app.services.escandallos import (
+    EscandallosNotConfigured,
+    ingredient_costs,
+    ingredient_count,
+)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
-
-
-class SyncMatch(BaseModel):
-    item_id: int
-    item_name: str
-    escandallos_name: str
-    current_cost: float
-    new_cost: float
 
 
 class SyncConfirmItem(BaseModel):
@@ -23,23 +19,14 @@ class SyncConfirmItem(BaseModel):
     new_cost: float
 
 
-def _escandallos_url(db: Session) -> str:
-    url_setting = db.query(Setting).filter(Setting.key == "escandallos_api_url").first()
-    if not url_setting:
-        raise HTTPException(400, "escandallos_api_url setting not configured")
-    return url_setting.value.rstrip("/")
-
-
-def _fetch_ingredients(db: Session) -> list[dict]:
-    """Fetch the ingredient list from the configured Escandallos API."""
+def _read_escandallos(fn, *args):
+    """Run an Escandallos read, mapping its failures onto HTTP errors."""
     try:
-        resp = httpx.get(f"{_escandallos_url(db)}/api/ingredients", timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-    except HTTPException:
-        raise
+        return fn(*args)
+    except EscandallosNotConfigured:
+        raise HTTPException(400, "ESCANDALLOS_DATABASE_URL no configurado")
     except Exception as e:
-        raise HTTPException(502, f"Failed to fetch escandallos data: {str(e)}")
+        raise HTTPException(502, f"Failed to read escandallos data: {str(e)}")
 
 
 @router.post("/test")
@@ -47,20 +34,9 @@ def test_escandallos_connection(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """Check the configured Escandallos URL is reachable.
-
-    Deliberately hits /api/health, the only endpoint Escandallos serves without
-    a token. Its ingredient endpoints all return 401 and this app holds no
-    Escandallos credential, so a connectivity check is as far as we can verify
-    without one.
-    """
-    base = _escandallos_url(db)
-    try:
-        resp = httpx.get(f"{base}/api/health", timeout=30)
-        resp.raise_for_status()
-    except Exception as e:
-        raise HTTPException(502, f"Failed to reach escandallos: {str(e)}")
-    return {"ok": True, "url": base}
+    """Check the Escandallos database is reachable before running a sync."""
+    count = _read_escandallos(ingredient_count)
+    return {"ok": True, "ingredients": count}
 
 
 @router.post("/escandallos")
@@ -68,26 +44,54 @@ def sync_escandallos(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    ingredients = _fetch_ingredients(db)
+    """Preview cost changes for items linked to Escandallos by escandallos_name.
 
-    # Build lookup by escandallos_name
-    items = db.query(Item).filter(Item.escandallos_name.isnot(None), Item.is_active == True).all()
-    item_map = {item.escandallos_name: item for item in items}
+    Nothing is written here — the admin reviews the preview and applies it via
+    /confirm.
+    """
+    costs = _read_escandallos(ingredient_costs)
+    cost_by_name = {c["nombre"]: c["cost"] for c in costs}
 
-    matches = []
-    for ingredient in ingredients:
-        name = ingredient.get("name", "")
-        cost = ingredient.get("cost", 0.0)
-        if name in item_map:
-            item = item_map[name]
-            matches.append({
-                "item_id": item.id,
-                "item_name": item.name,
-                "escandallos_name": name,
-                "current_cost": item.cost_per_unit,
-                "new_cost": cost,
+    items = (
+        db.query(Item)
+        .filter(Item.escandallos_name.isnot(None), Item.is_active == True)  # noqa: E712
+        .order_by(Item.name)
+        .all()
+    )
+
+    matches: list[dict] = []
+    skipped: list[dict] = []
+    for item in items:
+        new_cost = cost_by_name.get(item.escandallos_name)
+        if new_cost is None:
+            skipped.append({
+                "name": item.name,
+                "escandallos_name": item.escandallos_name,
+                "reason": "no encontrado en Escandallos",
             })
-    return matches
+            continue
+        # A cost of zero means Escandallos could not price it (a frozen item
+        # whose origin bean is missing, a bad merma). Overwriting a real cost
+        # with zero would silently corrupt every future movement, so refuse.
+        if new_cost <= 0:
+            skipped.append({
+                "name": item.name,
+                "escandallos_name": item.escandallos_name,
+                "reason": "coste cero en Escandallos",
+            })
+            continue
+        new_cost = round(new_cost, 4)
+        if new_cost == round(item.cost_per_unit, 4):
+            continue
+        matches.append({
+            "item_id": item.id,
+            "name": item.name,
+            "escandallos_name": item.escandallos_name,
+            "current_cost": item.cost_per_unit,
+            "new_cost": new_cost,
+        })
+
+    return {"matches": matches, "skipped": skipped}
 
 
 @router.post("/confirm")
@@ -98,6 +102,8 @@ def confirm_sync(
 ):
     applied = []
     for update in updates:
+        if update.new_cost <= 0:
+            continue
         item = db.query(Item).filter(Item.id == update.item_id).first()
         if not item:
             continue
@@ -119,4 +125,4 @@ def confirm_sync(
         })
 
     db.commit()
-    return {"applied": applied, "count": len(applied)}
+    return {"applied": applied, "updated": len(applied)}
