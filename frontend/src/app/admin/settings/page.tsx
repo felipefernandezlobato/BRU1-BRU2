@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Setting } from "@/lib/types";
+import { formatCHF } from "@/lib/format";
 
 // Mirrors FIXED_COSTS in backend/app/services/fixed_costs.py — each cost is
 // backed by three settings keys (amount / active / estimado).
@@ -154,8 +155,6 @@ export default function SettingsPage() {
   const totalFixed = sumOf(activeCosts);
   const totalConfirmado = sumOf(activeCosts.filter(({ slug }) => !fixed[slug]?.estimado));
   const totalEstimado = totalFixed - totalConfirmado;
-  const fmtCHF = (n: number) =>
-    n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (loading) {
     return (
@@ -314,16 +313,16 @@ export default function SettingsPage() {
         <div className="bg-[#F8F0F1] rounded-xl p-4 border border-[#E5E7EB]">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-[#1A1A1A]">Total mensual</span>
-            <span className="text-sm font-bold text-[#861A22]">CHF {fmtCHF(totalFixed)}</span>
+            <span className="text-sm font-bold text-[#861A22]">{formatCHF(totalFixed)}</span>
           </div>
           <div className="mt-2 space-y-1">
             <div className="flex items-center justify-between text-xs text-[#6B7280]">
               <span>Confirmado</span>
-              <span>CHF {fmtCHF(totalConfirmado)}</span>
+              <span>{formatCHF(totalConfirmado)}</span>
             </div>
             <div className="flex items-center justify-between text-xs text-[#6B7280]">
               <span>Estimado</span>
-              <span>CHF {fmtCHF(totalEstimado)}</span>
+              <span>{formatCHF(totalEstimado)}</span>
             </div>
           </div>
         </div>

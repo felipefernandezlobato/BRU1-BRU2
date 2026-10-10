@@ -4,6 +4,7 @@ from app.services.fixed_costs import (
     fixed_costs_for_month,
     get_fixed_costs,
     get_monthly_rent,
+    load_settings,
     month_open_factor,
     setting_keys,
 )
@@ -68,7 +69,6 @@ def test_malformed_amount_falls_back_to_default():
 
 def test_total_for_a_full_month(db):
     _seed_fixed_costs(db)
-    from app.services.fixed_costs import load_settings
 
     result = fixed_costs_for_month(load_settings(db), 2026, 9)
     assert result["total"] == 1740.00
@@ -77,7 +77,6 @@ def test_total_for_a_full_month(db):
 
 def test_opening_month_is_prorated_to_half(db):
     _seed_fixed_costs(db)
-    from app.services.fixed_costs import load_settings
 
     result = fixed_costs_for_month(load_settings(db), 2026, 2)
     assert result["total"] == 870.00
@@ -85,7 +84,6 @@ def test_opening_month_is_prorated_to_half(db):
 
 def test_months_before_opening_are_zero(db):
     _seed_fixed_costs(db)
-    from app.services.fixed_costs import load_settings
 
     result = fixed_costs_for_month(load_settings(db), 2026, 1)
     assert result["total"] == 0.0
