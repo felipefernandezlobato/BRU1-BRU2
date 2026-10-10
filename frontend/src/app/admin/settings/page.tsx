@@ -25,6 +25,14 @@ function asBool(value: string | undefined, fallback: boolean): boolean {
   return ["1", "true", "t", "yes", "si"].includes(value.trim().toLowerCase());
 }
 
+// A blank or non-numeric amount must never be saved: the backend cannot parse it
+// and would silently fall back to the hardcoded default, so clearing the field
+// to type 0 would revert the cost to its full default instead.
+function amountIsValid(value: string | undefined): boolean {
+  const n = parseFloat(value ?? "");
+  return Number.isFinite(n) && n >= 0;
+}
+
 export default function SettingsPage() {
   const toast = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -85,6 +93,10 @@ export default function SettingsPage() {
   async function handleSaveFixedCost(slug: string) {
     const form = fixed[slug];
     if (!form) return;
+    if (!amountIsValid(form.amount)) {
+      toast("Introduce un importe valido", "error");
+      return;
+    }
     setSavingKey(`cost_${slug}`);
     try {
       // One PUT per backing key; the settings API is single-key by design.
@@ -110,7 +122,11 @@ export default function SettingsPage() {
         [`cost_${slug}_estimado`]: String(form.estimado),
       }));
     } catch {
+      // The three PUTs are independent, so one may have landed while another
+      // failed. Pull server truth back in rather than leaving the form showing
+      // values that were not all persisted.
       toast("Error al guardar coste", "error");
+      fetchSettings();
     } finally {
       setSavingKey(null);
     }
@@ -263,7 +279,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => handleSaveFixedCost(slug)}
-                  disabled={saving}
+                  disabled={saving || !amountIsValid(form.amount)}
                   className="bg-[#861A22] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#6B151D] disabled:opacity-50 transition-colors shrink-0"
                 >
                   {saving ? "Guardando..." : "Guardar"}
