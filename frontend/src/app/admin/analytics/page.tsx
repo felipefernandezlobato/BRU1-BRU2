@@ -13,12 +13,21 @@ interface MonthlyData {
   count: number;
 }
 
+interface FixedCostItem {
+  slug: string;
+  label: string;
+  amount: number;
+  estimado: boolean;
+}
+
 interface MonthlyCombinedData {
   year: number;
   month: number;
   movement_cost: number;
   personnel_cost: number;
   rent: number;
+  fixed_costs: number;
+  fixed_cost_items: FixedCostItem[];
 }
 
 interface MonthlyMarkupData {
@@ -110,11 +119,30 @@ export default function AnalyticsPage() {
     { label: "Movimientos", data: combinedData.map((d) => d.movement_cost), color: "#861A22" },
     { label: "Personal", data: combinedData.map((d) => d.personnel_cost), color: "#D4C3A5" },
     { label: "Alquiler", data: combinedData.map((d) => d.rent), color: "#6B151D" },
+    { label: "Gastos fijos", data: combinedData.map((d) => d.fixed_costs ?? 0), color: "#8C7A5B" },
   ];
   const totalMovements = combinedData.reduce((s, d) => s + d.movement_cost, 0);
   const totalPersonnel = combinedData.reduce((s, d) => s + d.personnel_cost, 0);
   const totalRent = combinedData.reduce((s, d) => s + d.rent, 0);
-  const grandTotal = totalMovements + totalPersonnel + totalRent;
+  const totalFixed = combinedData.reduce((s, d) => s + (d.fixed_costs ?? 0), 0);
+  const grandTotal = totalMovements + totalPersonnel + totalRent + totalFixed;
+
+  // The chart keeps one readable "Gastos fijos" band; the breakdown below it
+  // itemises each cost across the selected period.
+  const fixedBreakdown = Array.from(
+    combinedData
+      .flatMap((d) => d.fixed_cost_items ?? [])
+      .reduce((acc, item) => {
+        const prev = acc.get(item.slug);
+        acc.set(item.slug, {
+          label: item.label,
+          amount: (prev?.amount ?? 0) + item.amount,
+          estimado: item.estimado,
+        });
+        return acc;
+      }, new Map<string, { label: string; amount: number; estimado: boolean }>())
+      .values()
+  );
   const fmtCHF = (n: number) => n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const dirLabels = directionData.map((d) =>
@@ -186,6 +214,27 @@ export default function AnalyticsPage() {
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#6B151D] inline-block" />Alquiler</span>
                   <span>CHF {fmtCHF(totalRent)}</span>
                 </div>
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#8C7A5B] inline-block" />Gastos fijos</span>
+                  <span>CHF {fmtCHF(totalFixed)}</span>
+                </div>
+                {fixedBreakdown.map((item) => (
+                  <div
+                    key={item.label}
+                    className="flex items-center justify-between text-xs text-[#9CA3AF] pl-[18px]"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-[#D1D5DB]">└</span>
+                      {item.label}
+                      {item.estimado && (
+                        <span className="text-[9px] uppercase tracking-wide font-semibold text-[#92400E] bg-[#FEF3C7] px-1.5 py-px rounded-full">
+                          Est
+                        </span>
+                      )}
+                    </span>
+                    <span>CHF {fmtCHF(item.amount)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

@@ -5,6 +5,26 @@ import { apiFetch } from "@/lib/api";
 import { useToast } from "@/components/Toast";
 import { Setting } from "@/lib/types";
 
+// Mirrors FIXED_COSTS in backend/app/services/fixed_costs.py — each cost is
+// backed by three settings keys (amount / active / estimado).
+const FIXED_COSTS = [
+  { slug: "utilities", label: "Utilities", defaultAmount: "850.00", defaultEstimado: false },
+  { slug: "sunrise", label: "Sunrise", defaultAmount: "50.00", defaultEstimado: true },
+  { slug: "lightspeed", label: "Lightspeed", defaultAmount: "140.00", defaultEstimado: false },
+  { slug: "transporte_sergio", label: "Transporte Sergio", defaultAmount: "700.00", defaultEstimado: true },
+];
+
+interface FixedCostForm {
+  amount: string;
+  active: boolean;
+  estimado: boolean;
+}
+
+function asBool(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value === "") return fallback;
+  return ["1", "true", "t", "yes", "si"].includes(value.trim().toLowerCase());
+}
+
 export default function SettingsPage() {
   const toast = useToast();
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -15,6 +35,7 @@ export default function SettingsPage() {
   // Local form values
   const [markup, setMarkup] = useState("");
   const [escandUrl, setEscandUrl] = useState("");
+  const [fixed, setFixed] = useState<Record<string, FixedCostForm>>({});
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -24,6 +45,16 @@ export default function SettingsPage() {
       setSettings(map);
       setMarkup(map["markup_pct"] || "0");
       setEscandUrl(map["escandallos_url"] || "");
+
+      const nextFixed: Record<string, FixedCostForm> = {};
+      FIXED_COSTS.forEach(({ slug, defaultAmount, defaultEstimado }) => {
+        nextFixed[slug] = {
+          amount: map[`cost_${slug}_amount`] || defaultAmount,
+          active: asBool(map[`cost_${slug}_active`], true),
+          estimado: asBool(map[`cost_${slug}_estimado`], defaultEstimado),
+        };
+      });
+      setFixed(nextFixed);
     } catch {
       toast("Error al cargar ajustes", "error");
     } finally {
@@ -51,6 +82,44 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSaveFixedCost(slug: string) {
+    const form = fixed[slug];
+    if (!form) return;
+    setSavingKey(`cost_${slug}`);
+    try {
+      // One PUT per backing key; the settings API is single-key by design.
+      await Promise.all([
+        apiFetch(`/api/settings/cost_${slug}_amount`, {
+          method: "PUT",
+          body: JSON.stringify({ value: form.amount }),
+        }),
+        apiFetch(`/api/settings/cost_${slug}_active`, {
+          method: "PUT",
+          body: JSON.stringify({ value: String(form.active) }),
+        }),
+        apiFetch(`/api/settings/cost_${slug}_estimado`, {
+          method: "PUT",
+          body: JSON.stringify({ value: String(form.estimado) }),
+        }),
+      ]);
+      toast("Coste guardado");
+      setSettings((prev) => ({
+        ...prev,
+        [`cost_${slug}_amount`]: form.amount,
+        [`cost_${slug}_active`]: String(form.active),
+        [`cost_${slug}_estimado`]: String(form.estimado),
+      }));
+    } catch {
+      toast("Error al guardar coste", "error");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  function updateFixed(slug: string, patch: Partial<FixedCostForm>) {
+    setFixed((prev) => ({ ...prev, [slug]: { ...prev[slug], ...patch } }));
+  }
+
   async function handleTestConnection() {
     setTesting(true);
     try {
@@ -62,6 +131,15 @@ export default function SettingsPage() {
       setTesting(false);
     }
   }
+
+  const activeCosts = FIXED_COSTS.filter(({ slug }) => fixed[slug]?.active);
+  const sumOf = (list: typeof FIXED_COSTS) =>
+    list.reduce((sum, { slug }) => sum + (parseFloat(fixed[slug]?.amount) || 0), 0);
+  const totalFixed = sumOf(activeCosts);
+  const totalConfirmado = sumOf(activeCosts.filter(({ slug }) => !fixed[slug]?.estimado));
+  const totalEstimado = totalFixed - totalConfirmado;
+  const fmtCHF = (n: number) =>
+    n.toLocaleString("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (loading) {
     return (
@@ -135,6 +213,104 @@ export default function SettingsPage() {
         >
           {testing ? "Probando..." : "Probar conexion"}
         </button>
+      </div>
+
+      {/* Fixed monthly BRU2 costs */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="font-display text-lg text-[#1A1A1A]" style={{ fontStyle: "italic" }}>
+            Costes fijos BRU2
+          </h2>
+          <p className="text-xs text-[#9CA3AF] mt-1">
+            Gastos mensuales fijos de BRU2. Se aplican desde la apertura
+            (febrero 2026 a media mensualidad, completo desde marzo)
+          </p>
+        </div>
+
+        {FIXED_COSTS.map(({ slug, label }) => {
+          const form = fixed[slug];
+          if (!form) return null;
+          const saving = savingKey === `cost_${slug}`;
+          return (
+            <div
+              key={slug}
+              className={`bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB] ${
+                form.active ? "" : "opacity-60"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-[#1A1A1A]">{label}</label>
+                {form.estimado && (
+                  <span className="text-[10px] uppercase tracking-wide font-semibold text-[#92400E] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
+                    Estimado
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#9CA3AF] pointer-events-none">
+                    CHF
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.amount}
+                    onChange={(e) => updateFixed(slug, { amount: e.target.value })}
+                    className="w-full border border-[#E5E7EB] rounded-lg pl-12 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#861A22]/30 focus:border-[#861A22]"
+                  />
+                </div>
+                <button
+                  onClick={() => handleSaveFixedCost(slug)}
+                  disabled={saving}
+                  className="bg-[#861A22] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#6B151D] disabled:opacity-50 transition-colors shrink-0"
+                >
+                  {saving ? "Guardando..." : "Guardar"}
+                </button>
+              </div>
+
+              <div className="flex gap-5 mt-3">
+                <label className="flex items-center gap-2 text-xs text-[#6B7280] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.active}
+                    onChange={(e) => updateFixed(slug, { active: e.target.checked })}
+                    className="w-4 h-4 accent-[#861A22]"
+                  />
+                  Activo
+                </label>
+                <label className="flex items-center gap-2 text-xs text-[#6B7280] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.estimado}
+                    onChange={(e) => updateFixed(slug, { estimado: e.target.checked })}
+                    className="w-4 h-4 accent-[#861A22]"
+                  />
+                  Estimado
+                </label>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Live total */}
+        <div className="bg-[#F8F0F1] rounded-xl p-4 border border-[#E5E7EB]">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-[#1A1A1A]">Total mensual</span>
+            <span className="text-sm font-bold text-[#861A22]">CHF {fmtCHF(totalFixed)}</span>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between text-xs text-[#6B7280]">
+              <span>Confirmado</span>
+              <span>CHF {fmtCHF(totalConfirmado)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-[#6B7280]">
+              <span>Estimado</span>
+              <span>CHF {fmtCHF(totalEstimado)}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

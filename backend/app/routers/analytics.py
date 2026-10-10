@@ -5,8 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_admin
 from app.database import get_db
-from app.models import User, Movement, MovementLine, Item, PersonnelCost, Setting
+from app.models import User, Movement, MovementLine, Item, PersonnelCost
 from app.schemas import AnalyticsSummary
+from app.services.fixed_costs import (
+    load_settings,
+    get_monthly_rent,
+    fixed_costs_for_month,
+    month_open_factor,
+)
 from app.services.analytics import (
     get_month_range,
     monthly_summary,
@@ -181,11 +187,8 @@ def get_monthly_combined(
     current_user: User = Depends(require_admin),
 ):
     movement_data = monthly_totals(db, months)
-    rent_row = db.query(Setting).filter(Setting.key == "monthly_rent").first()
-    monthly_rent = float(rent_row.value) if rent_row else 0.0
-
-    # BRU2 opened 2026-02-16: no rent before Feb, half rent in Feb, full from March
-    OPEN_YEAR, OPEN_MONTH = 2026, 2
+    settings = load_settings(db)
+    monthly_rent = get_monthly_rent(settings)
 
     result = []
     for m in movement_data:
@@ -195,18 +198,17 @@ def get_monthly_combined(
         ).first()
 
         y, mo = m["year"], m["month"]
-        if y < OPEN_YEAR or (y == OPEN_YEAR and mo < OPEN_MONTH):
-            rent = 0.0
-        elif y == OPEN_YEAR and mo == OPEN_MONTH:
-            rent = round(monthly_rent / 2, 2)
-        else:
-            rent = monthly_rent
+        # Rent and the other fixed costs share one proration rule (BRU2 opened
+        # mid-February 2026), so they cannot drift apart.
+        fixed = fixed_costs_for_month(settings, y, mo)
 
         result.append({
             "year": y,
             "month": mo,
             "movement_cost": m["total_cost"],
             "personnel_cost": round(pc.bru2_cost, 2) if pc else 0.0,
-            "rent": rent,
+            "rent": round(monthly_rent * month_open_factor(y, mo), 2),
+            "fixed_costs": fixed["total"],
+            "fixed_cost_items": fixed["items"],
         })
     return result
