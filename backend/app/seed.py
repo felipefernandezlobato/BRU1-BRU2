@@ -22,6 +22,10 @@ def seed_data(db: Session):
     # Default settings
     db.add(Setting(key="markup_pct", value="30"))
     db.add(Setting(key="escandallos_api_url", value="https://bru-escandallos-api.onrender.com"))
+    # Rent starts at zero rather than a guessed figure; the admin sets the real
+    # amount in Ajustes. The row has to exist because PUT /api/settings/{key}
+    # only updates and never creates.
+    db.add(Setting(key="monthly_rent", value="0.00"))
 
     # Fixed monthly BRU2 costs — three rows each (amount / active / estimado).
     # PUT /api/settings/{key} only updates existing rows, so the keys have to

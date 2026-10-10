@@ -44,6 +44,7 @@ export default function SettingsPage() {
   // Local form values
   const [markup, setMarkup] = useState("");
   const [escandUrl, setEscandUrl] = useState("");
+  const [rent, setRent] = useState("");
   const [fixed, setFixed] = useState<Record<string, FixedCostForm>>({});
 
   const fetchSettings = useCallback(async () => {
@@ -53,7 +54,8 @@ export default function SettingsPage() {
       data.forEach((s) => { map[s.key] = s.value; });
       setSettings(map);
       setMarkup(map["markup_pct"] || "0");
-      setEscandUrl(map["escandallos_url"] || "");
+      setEscandUrl(map["escandallos_api_url"] || "");
+      setRent(map["monthly_rent"] || "0.00");
 
       const nextFixed: Record<string, FixedCostForm> = {};
       FIXED_COSTS.forEach(({ slug, defaultAmount, defaultEstimado }) => {
@@ -140,7 +142,9 @@ export default function SettingsPage() {
   async function handleTestConnection() {
     setTesting(true);
     try {
-      await apiFetch("/api/sync/test", { method: "POST" });
+      await apiFetch<{ ok: boolean; url: string }>("/api/sync/test", {
+        method: "POST",
+      });
       toast("Conexion exitosa");
     } catch {
       toast("Error de conexion", "error");
@@ -152,8 +156,11 @@ export default function SettingsPage() {
   const activeCosts = FIXED_COSTS.filter(({ slug }) => fixed[slug]?.active);
   const sumOf = (list: typeof FIXED_COSTS) =>
     list.reduce((sum, { slug }) => sum + (parseFloat(fixed[slug]?.amount) || 0), 0);
-  const totalFixed = sumOf(activeCosts);
-  const totalConfirmado = sumOf(activeCosts.filter(({ slug }) => !fixed[slug]?.estimado));
+  // Rent is a confirmed fixed cost, so it counts toward both totals.
+  const rentValue = parseFloat(rent) || 0;
+  const totalFixed = rentValue + sumOf(activeCosts);
+  const totalConfirmado =
+    rentValue + sumOf(activeCosts.filter(({ slug }) => !fixed[slug]?.estimado));
   const totalEstimado = totalFixed - totalConfirmado;
 
   if (loading) {
@@ -214,11 +221,11 @@ export default function SettingsPage() {
             className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#861A22]/30 focus:border-[#861A22]"
           />
           <button
-            onClick={() => handleSave("escandallos_url", escandUrl)}
-            disabled={savingKey === "escandallos_url"}
+            onClick={() => handleSave("escandallos_api_url", escandUrl)}
+            disabled={savingKey === "escandallos_api_url"}
             className="bg-[#861A22] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#6B151D] disabled:opacity-50 transition-colors shrink-0"
           >
-            {savingKey === "escandallos_url" ? "Guardando..." : "Guardar"}
+            {savingKey === "escandallos_api_url" ? "Guardando..." : "Guardar"}
           </button>
         </div>
         <button
@@ -240,6 +247,35 @@ export default function SettingsPage() {
             Gastos mensuales fijos de BRU2. Se aplican desde la apertura
             (febrero 2026 a media mensualidad, completo desde marzo)
           </p>
+        </div>
+
+        {/* Rent — same section, but a plain amount with no activo/estimado flags */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
+          <label className="block text-sm font-medium text-[#1A1A1A] mb-3">
+            Alquiler
+          </label>
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#9CA3AF] pointer-events-none">
+                CHF
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={rent}
+                onChange={(e) => setRent(e.target.value)}
+                className="w-full border border-[#E5E7EB] rounded-lg pl-12 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#861A22]/30 focus:border-[#861A22]"
+              />
+            </div>
+            <button
+              onClick={() => handleSave("monthly_rent", rent)}
+              disabled={savingKey === "monthly_rent" || !amountIsValid(rent)}
+              className="bg-[#861A22] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#6B151D] disabled:opacity-50 transition-colors shrink-0"
+            >
+              {savingKey === "monthly_rent" ? "Guardando..." : "Guardar"}
+            </button>
+          </div>
         </div>
 
         {FIXED_COSTS.map(({ slug, label }) => {

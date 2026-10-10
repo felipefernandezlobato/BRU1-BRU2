@@ -115,11 +115,13 @@ export default function AnalyticsPage() {
   const catValues = categoryData.map((d) => d.total);
 
   const combinedLabels = combinedData.map((d) => MONTH_NAMES[d.month - 1] || `${d.month}`);
+  // Chart.js stacks datasets bottom-to-top in array order: the fixed monthly
+  // costs form the base of each bar, with the variable costs stacked above.
   const combinedDatasets = [
+    { label: "Gastos fijos", data: combinedData.map((d) => d.fixed_costs ?? 0), color: "#8C7A5B" },
+    { label: "Alquiler", data: combinedData.map((d) => d.rent), color: "#6B151D" },
     { label: "Movimientos", data: combinedData.map((d) => d.movement_cost), color: "#861A22" },
     { label: "Personal", data: combinedData.map((d) => d.personnel_cost), color: "#D4C3A5" },
-    { label: "Alquiler", data: combinedData.map((d) => d.rent), color: "#6B151D" },
-    { label: "Gastos fijos", data: combinedData.map((d) => d.fixed_costs ?? 0), color: "#8C7A5B" },
   ];
   const totalMovements = combinedData.reduce((s, d) => s + d.movement_cost, 0);
   const totalPersonnel = combinedData.reduce((s, d) => s + d.personnel_cost, 0);
@@ -202,18 +204,7 @@ export default function AnalyticsPage() {
                 <span className="text-sm font-bold text-[#1A1A1A]">CHF {fmtCHF(grandTotal)}</span>
               </div>
               <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs text-[#6B7280]">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#861A22] inline-block" />Movimientos</span>
-                  <span>CHF {fmtCHF(totalMovements)}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-[#6B7280]">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#D4C3A5] inline-block" />Personal</span>
-                  <span>CHF {fmtCHF(totalPersonnel)}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-[#6B7280]">
-                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#6B151D] inline-block" />Alquiler</span>
-                  <span>CHF {fmtCHF(totalRent)}</span>
-                </div>
+                {/* Same order as the stack, read from the base of the bar up */}
                 <div className="flex items-center justify-between text-xs text-[#6B7280]">
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#8C7A5B] inline-block" />Gastos fijos</span>
                   <span>CHF {fmtCHF(totalFixed)}</span>
@@ -235,6 +226,18 @@ export default function AnalyticsPage() {
                     <span>CHF {fmtCHF(item.amount)}</span>
                   </div>
                 ))}
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#6B151D] inline-block" />Alquiler</span>
+                  <span>CHF {fmtCHF(totalRent)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#861A22] inline-block" />Movimientos</span>
+                  <span>CHF {fmtCHF(totalMovements)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#6B7280]">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-[#D4C3A5] inline-block" />Personal</span>
+                  <span>CHF {fmtCHF(totalPersonnel)}</span>
+                </div>
               </div>
             </div>
           </div>
