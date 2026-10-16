@@ -43,7 +43,6 @@ export default function SettingsPage() {
 
   // Local form values
   const [markup, setMarkup] = useState("");
-  const [escandUrl, setEscandUrl] = useState("");
   const [rent, setRent] = useState("");
   const [fixed, setFixed] = useState<Record<string, FixedCostForm>>({});
 
@@ -54,7 +53,6 @@ export default function SettingsPage() {
       data.forEach((s) => { map[s.key] = s.value; });
       setSettings(map);
       setMarkup(map["markup_pct"] || "0");
-      setEscandUrl(map["escandallos_api_url"] || "");
       setRent(map["monthly_rent"] || "0.00");
 
       const nextFixed: Record<string, FixedCostForm> = {};
@@ -142,10 +140,11 @@ export default function SettingsPage() {
   async function handleTestConnection() {
     setTesting(true);
     try {
-      await apiFetch<{ ok: boolean; url: string }>("/api/sync/test", {
-        method: "POST",
-      });
-      toast("Conexion exitosa");
+      const result = await apiFetch<{ ok: boolean; ingredients: number }>(
+        "/api/sync/test",
+        { method: "POST" }
+      );
+      toast(`Conexion exitosa - ${result.ingredients} ingredientes`);
     } catch {
       toast("Error de conexion", "error");
     } finally {
@@ -204,34 +203,21 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Escandallos URL */}
+      {/* Escandallos connection check. The URL field that used to live here was
+          removed: the cost sync reads the Escandallos database directly, so
+          nothing consumed the saved value. */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-[#E5E7EB]">
         <label className="block text-sm font-medium text-[#1A1A1A] mb-1">
-          URL API Escandallos
+          Escandallos
         </label>
         <p className="text-xs text-[#9CA3AF] mb-3">
-          URL del servicio de Escandallos para sincronizar costes
+          Comprueba la conexion con la base de datos de Escandallos antes de
+          sincronizar costes
         </p>
-        <div className="flex gap-3">
-          <input
-            type="url"
-            value={escandUrl}
-            onChange={(e) => setEscandUrl(e.target.value)}
-            placeholder="https://..."
-            className="flex-1 border border-[#E5E7EB] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#861A22]/30 focus:border-[#861A22]"
-          />
-          <button
-            onClick={() => handleSave("escandallos_api_url", escandUrl)}
-            disabled={savingKey === "escandallos_api_url"}
-            className="bg-[#861A22] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#6B151D] disabled:opacity-50 transition-colors shrink-0"
-          >
-            {savingKey === "escandallos_api_url" ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
         <button
           onClick={handleTestConnection}
           disabled={testing}
-          className="mt-3 border border-[#E5E7EB] text-[#6B7280] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#F3F4F6] disabled:opacity-50 transition-colors"
+          className="border border-[#E5E7EB] text-[#6B7280] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#F3F4F6] disabled:opacity-50 transition-colors"
         >
           {testing ? "Probando..." : "Probar conexion"}
         </button>
